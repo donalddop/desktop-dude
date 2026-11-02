@@ -26,6 +26,7 @@ from warfare import OUTLINE, FxWindow, _painter
 
 PIPE = r"\\.\pipe\CuttlefishPet.link"
 BUSY = ("dudeheld", "dude-ride", "eaten", "dying")
+SEAT = 18.0  # feet below the back so the sitting pose's hip (22 px up) sinks in a little
 
 LINES.update({
     "aqua_ride": ["Yeehaw kanker!", "Hop inktvis, lopen!", "Rodeo, mattie!"],
@@ -178,8 +179,11 @@ class Aquarium:
             return None
         age = min(0.15, max(0.0, time.monotonic() - self.link.stamp)) if self.link.stamp else 0.0
         g = dict(f)
-        for a, b in (("x", "vx"), ("l", "vx"), ("r", "vx"), ("y", "vy"), ("t", "vy"), ("bo", "vy")):
-            g[a] = f[a] + f[b] * age
+        # Cuttlefish Pet 2.9.1+ sends where the mantle top is; older ones only the sprite frame.
+        g.setdefault("back", f["t"] + 0.45 * (f["bo"] - f["t"]))
+        for a, b in (("x", "vx"), ("l", "vx"), ("r", "vx"), ("y", "vy"), ("t", "vy"), ("bo", "vy"),
+                     ("back", "vy")):
+            g[a] = g[a] + f[b] * age
         return g
 
     def candidates(self, mode):
@@ -330,7 +334,7 @@ class Aquarium:
 
     def run_ride(self, dt, f):
         d, j = self.d, self.job
-        d.x, d.y = f["x"], f["t"] + 20
+        d.x, d.y = f["x"], f["back"] + SEAT  # hip on the mantle, legs either side
         d.vx, d.vy = f["vx"], f["vy"]
         d.on_ground, d.plat_hwnd = False, None
         d.f = 1 if f.get("right", True) else -1

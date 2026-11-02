@@ -14,4 +14,4 @@ def _data_dir() -> Path:
 
 
 DATA = _data_dir()
-VERSION = "1.2"
+VERSION = "1.2.1"

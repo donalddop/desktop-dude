@@ -49,8 +49,9 @@ def test_rides_a_cuttlefish_until_bucked_off(app):
     assert _ops(dude, "ride")
     fish = aq.link.fish[7]
     fish["beh"], fish["x"], fish["y"], fish["t"] = "dude-ride", fish["x"] + 200, fish["y"] - 150, fish["t"] - 150
+    fish["back"] = fish["y"] - 40
     _run(dude, clock, 30)
-    assert dude.state == "aqua" and dude.x == fish["x"] and dude.y == fish["t"] + 20 and aq.FROZEN
+    assert dude.state == "aqua" and dude.x == fish["x"] and dude.y == fish["back"] + 18 and aq.FROZEN
     _paint(dude)
     fish["beh"] = "angry"
     _run(dude, clock, 2)
