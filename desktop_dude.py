@@ -51,13 +51,14 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
+from appdir import DATA
 from arsenal import WEAPONS, Arsenal
 from life import Life
 from terror import TERROR_MENU, Terror
 from warfare import War
 
 IS_WIN = sys.platform == "win32"
-LOG = Path(__file__).with_name("desktop_dude.log")
+LOG = DATA / "desktop_dude.log"
 G = 2400.0  # gravity, px/s^2
 
 

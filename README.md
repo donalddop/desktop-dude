@@ -6,14 +6,22 @@ A stick figure that lives on your desktop and fights your cursor. Windows only.
 
 ## Install
 
-Needs Windows 10/11 and [uv](https://docs.astral.sh/uv/getting-started/installation/):
+Windows 10/11. Download **DesktopDude-setup.exe** from the
+[latest release](https://github.com/donalddop/desktop-dude/releases/latest) and run it (per-user install, no admin
+rights). It's not code-signed, so Windows SmartScreen asks once: *More info* > *Run anyway*.
+Prefer portable? Unzip **DesktopDude-standalone.zip** and start `DesktopDude.exe`.
+The exe keeps its save game, log, sounds and config (`dude_config.json`, `ha.json`) in `%LOCALAPPDATA%\DesktopDude`.
+
+### From source
+
+Needs [uv](https://docs.astral.sh/uv/getting-started/installation/):
 
     winget install astral-sh.uv
     git clone https://github.com/donalddop/desktop-dude
     cd desktop-dude
     uv run --gui-script desktop_dude.py
 
-uv installs Python and the dependencies on the first run. Sound effects are off by default (tray > Sound).
+uv installs Python and the dependencies on the first run. Build the exe + installer yourself with `.\\build.ps1`. Sound effects are off by default (tray > Sound).
 He speaks Amsterdam street Dutch and swears a lot. You've been warned.
 
 ## What he does

@@ -8,3 +8,7 @@ ha.json
 dude_config.json
 .pytest_cache/
 .ruff_cache/
+build/
+dist/
+publish/
+*.spec

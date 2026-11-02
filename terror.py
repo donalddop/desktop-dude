@@ -30,9 +30,10 @@ from PySide6.QtGui import (
     QRadialGradient,
 )
 
+from appdir import DATA
 from warfare import Blast, FxWindow, _painter
 
-LOG = Path(__file__).with_name("desktop_dude.log")
+LOG = DATA / "desktop_dude.log"
 STATES = ("spray", "surf", "flee", "hunt", "eat")
 
 LINES = {
@@ -1060,7 +1061,7 @@ class Terror:
         self.d = dude
         self.enabled = True
         self.probe = Probe() if real else FakeProbe()
-        self.sfx = Sfx(real, Path(__file__).with_name("sounds"))
+        self.sfx = Sfx(real, DATA / "sounds")
         self.graffiti: list[Graffiti] = []
         self.fx: list = []
         self.pending: list = []

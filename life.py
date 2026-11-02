@@ -23,12 +23,13 @@ from typing import ClassVar
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainterPath, QPen, QPolygonF
 
+from appdir import DATA
 from arsenal import WEAPONS, PopText
 from terror import LINES, _log
 from warfare import OUTLINE, FxWindow, _painter
 
 G = 2400.0
-HERE = Path(__file__).resolve().parent
+HERE = DATA
 
 LINES.update({
     "watch": ["Ssst, film!", "Popcorn, mattie?", "Ewa, deze is goed", "Ga eens opzij, ik zie niks"],
