@@ -138,7 +138,7 @@ class Ears:
     # ---- settings
     def _config(self) -> dict:
         try:
-            return json.loads(CONFIG.read_text(encoding="utf-8")) if CONFIG.exists() else {}
+            return json.loads(CONFIG.read_text(encoding="utf-8-sig")) if CONFIG.exists() else {}
         except (OSError, ValueError):
             return {}
 

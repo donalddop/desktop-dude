@@ -49,7 +49,7 @@ class Updater:
         self.auto = True
         if real and self.path.exists():
             try:
-                self.auto = bool(json.loads(self.path.read_text(encoding="utf-8")).get("auto", True))
+                self.auto = bool(json.loads(self.path.read_text(encoding="utf-8-sig")).get("auto", True))
             except (OSError, ValueError):
                 pass
         self.next, self.busy, self.result = FIRST_CHECK, False, None

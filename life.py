@@ -128,7 +128,7 @@ class Save:
         self.path, self.data, self.dirty = path, dict(self.DEFAULTS), False
         if path is not None and path.exists():
             try:
-                self.data.update({k: v for k, v in json.loads(path.read_text(encoding="utf-8")).items()
+                self.data.update({k: v for k, v in json.loads(path.read_text(encoding="utf-8-sig")).items()
                                   if k in self.DEFAULTS})
             except (OSError, ValueError) as e:
                 _log(f"save unreadable, starting fresh: {e!r}")
@@ -217,7 +217,7 @@ class Weather:
         p = HERE / "dude_config.json"
         if real and p.exists():
             try:
-                cfg = json.loads(p.read_text(encoding="utf-8"))
+                cfg = json.loads(p.read_text(encoding="utf-8-sig"))
             except (OSError, ValueError) as e:
                 _log(f"dude_config.json unreadable: {e!r}")
         self.url = self.URL.format(lat=cfg.get("lat", 52.37), lon=cfg.get("lon", 4.90))
@@ -265,7 +265,7 @@ class HomeAssistant:
         p = HERE / "ha.json"
         if p.exists():
             try:
-                cfg = json.loads(p.read_text(encoding="utf-8"))
+                cfg = json.loads(p.read_text(encoding="utf-8-sig"))
             except (OSError, ValueError) as e:
                 _log(f"ha.json unreadable: {e!r}")
         self.url = (cfg.get("url") or os.environ.get("HA_URL") or "").rstrip("/") or None

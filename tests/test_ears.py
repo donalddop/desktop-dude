@@ -185,3 +185,11 @@ def _until_stood(dude, clock):
         if dude.state != "dance":
             return True
     return False
+
+
+def test_config_with_bom(tmp_path, monkeypatch):
+    p = tmp_path / "dude_config.json"
+    p.write_bytes(b"\xef\xbb\xbf" + b'{"listen": true, "listen_model": "qwen3.5:9b"}')
+    monkeypatch.setattr(ears, "CONFIG", p)
+    e = Ears(real=False)
+    assert e._config() == {"listen": True, "listen_model": "qwen3.5:9b"}
