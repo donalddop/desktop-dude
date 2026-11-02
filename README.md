@@ -10,6 +10,9 @@ Windows 10/11. Download **DesktopDude-setup.exe** from the
 [latest release](https://github.com/donalddop/desktop-dude/releases/latest) and run it (per-user install, no admin
 rights). It's not code-signed, so Windows SmartScreen asks once: *More info* > *Run anyway*.
 Prefer portable? Unzip **DesktopDude-standalone.zip** and start `DesktopDude.exe`.
+The installed exe updates itself: every 6 hours it checks GitHub for a new release, verifies the download's
+SHA-256, installs it silently and restarts (tray > Auto-update to switch it off, tray > Check for updates to
+check now). The portable zip only tells you a new version is out.
 The exe keeps its save game, log, sounds and config (`dude_config.json`, `ha.json`) in `%LOCALAPPDATA%\DesktopDude`.
 
 ### From source
@@ -78,5 +81,11 @@ Same rules: cursor is never flung while you hold a mouse button, windows snap ba
 - **Home Assistant (optional):** put `ha.json` next to the script:
   `{"url": "http://homeassistant.local:8123", "token": "<long-lived access token>"}` (gitignored).
   The "power cut" terror then snapshots the lights that are on, switches them off and restores the snapshot ~2s later.
+
+- **Cuttlefish Pet:** if [Cuttlefish Pet](https://github.com/donalddop/cuttlefish-pet) (2.9+) runs too, they talk
+  over its link pipe. The dude rides a cuttlefish (cowboy hat on) until it bucks him off, carries one overhead
+  and throws it, pets one (hearts), fights one (it inks him back) and, rarely, eats one for real: it lands in
+  Cuttlefish Pet's graveyard as *opgegeten door de dude*. Cuttlefish Pet refuses that with two or fewer left.
+  Tray > Aquarium triggers each on demand.
 
 Tray > Life test triggers everything on demand; the tray also shows level, XP, grudge and Home Assistant status.

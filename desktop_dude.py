@@ -51,10 +51,12 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
-from appdir import DATA
+from appdir import DATA, VERSION
+from aquarium import Aquarium
 from arsenal import WEAPONS, Arsenal
 from life import Life
 from terror import TERROR_MENU, Terror
+from updater import Updater
 from warfare import War
 
 IS_WIN = sys.platform == "win32"
@@ -970,7 +972,11 @@ class Dude(QWidget):
         self.war = War(self)
         self.terror = Terror(self, real=isinstance(w32, Win32))
         self.arsenal = Arsenal(self, Pose, Slash)
-        self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand}, real=isinstance(w32, Win32))
+        self.updater = Updater(real=isinstance(w32, Win32))
+        self.aqua = None
+        self.update_url = None
+        self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat}, real=isinstance(w32, Win32))
+        self.aqua = Aquarium(self, self.life.kit, real=isinstance(w32, Win32))
         self.fx: list[tuple] = []
         self.errors = 0
         self.tray = None
@@ -1005,6 +1011,8 @@ class Dude(QWidget):
                 self.arsenal.release()
             if getattr(self, "life", None) is not None:
                 self.life.release()
+            if getattr(self, "aqua", None) is not None:
+                self.aqua.release()
             self.sync_visible()
         self.x, self.y = self.world.spawn
         self.vx = self.vy = 0.0
@@ -1077,6 +1085,7 @@ class Dude(QWidget):
         self.last, self.dt = now, dt
         self.t += dt
         self.poll_hotkeys()
+        self.handle_update(self.updater.step(self.t))
         if self.paused:
             return
         if now >= self.next_fs:
@@ -1115,6 +1124,7 @@ class Dude(QWidget):
         self.terror.step(dt, cur, self.w32.buttons_down())
         self.arsenal.step(dt, cur, self.w32.buttons_down())
         self.life.step(dt, cur, self.w32.buttons_down())
+        self.aqua.step(dt, cur, self.w32.buttons_down())
         self.cracks = [c for c in self.cracks if c.step(dt)]
         self.fx = [(x, y, a + dt, k) for x, y, a, k in self.fx if a + dt < 0.6]
         self.place()
@@ -1151,6 +1161,8 @@ class Dude(QWidget):
         dist = math.hypot(dx, cy - (self.y - 50))
         btn = self.w32.buttons_down()
 
+        if self.aqua.think(dt, cur, btn):
+            return
         if self.life.think(dt, cur, btn):
             return
         if self.arsenal.think(dt, cur, btn):
@@ -1505,7 +1517,7 @@ class Dude(QWidget):
     def physics(self, dt, now):
         if self.state == HELD:
             return
-        if self.state == TANKING or self.state in self.terror.FROZEN or self.state in self.life.FROZEN:
+        if self.state == TANKING or self.state in self.terror.FROZEN or self.state in self.life.FROZEN or self.state in self.aqua.FROZEN:
             return
         if self.state == CLIMB:
             self.y += self.vy * dt
@@ -1583,6 +1595,7 @@ class Dude(QWidget):
         self.terror.release()
         self.arsenal.release()
         self.life.release()
+        self.aqua.release()
         self.shaker.restore_all()
         self.shove = None
         for w in self.rockets + self.booms:
@@ -1594,7 +1607,7 @@ class Dude(QWidget):
     # ---- visuals
     def make_pose(self):
         s, st = self.state, self.st
-        p = self.life.pose() or self.arsenal.pose()
+        p = self.aqua.pose() or self.life.pose() or self.arsenal.pose()
         if p is not None:
             return p
         if s == HELD:
@@ -1661,6 +1674,7 @@ class Dude(QWidget):
             self.draw_bazooka(qp, lift)
         draw_dude(qp, FX, FY - lift, self.pose, self.f, color)
         self.life.paint(qp, FX, FY - lift, self.pose, self.f)
+        self.aqua.paint(qp, FX, FY - lift, self.pose, self.f)
         if self.state == SLASH:
             self.draw_slash(qp)
         if self.state == "spray":
@@ -1857,6 +1871,7 @@ class Dude(QWidget):
         self.terror.set_visible(vis)
         self.arsenal.set_visible(vis)
         self.life.set_visible(vis)
+        self.aqua.set_visible(vis)
 
     def toggle_pause(self):
         self.paused = not self.paused
@@ -1873,6 +1888,21 @@ class Dude(QWidget):
     def drop_flak(self):
         if not (self.paused or self.napping):
             self.war.place_flak(self.w32.cursor_pos()[0])
+
+    def handle_update(self, r):
+        if r is None:
+            return
+        kind, ver, extra = r
+        msg = {"uptodate": f"Je hebt de nieuwste versie ({ver}).",
+               "available": f"Versie {ver} staat klaar. Klik hier om hem te downloaden.",
+               "install": f"Updaten naar {ver}... ik ben zo terug, kanker.",
+               "error": "Update-check mislukt, ik probeer het later nog eens."}[kind]
+        self.update_url = extra if kind == "available" else None
+        if self.tray:
+            self.tray.showMessage("Desktop Dude", msg)
+        if kind == "install":
+            Updater.run_installer(extra)
+            QTimer.singleShot(1500, self.quit)
 
     def weapon_now(self):
         if not (self.paused or self.napping):
@@ -1934,7 +1964,7 @@ def build_tray(dude: Dude):
     draw_dude(qp, 32, 60, pose_taunt(0.1), 1, QColor(*CALM), scale=0.5)
     qp.end()
     tray = QSystemTrayIcon(QIcon(pm))
-    tray.setToolTip("Desktop Dude")
+    tray.setToolTip(f"Desktop Dude {VERSION}")
     menu = QMenu()
     tray.pause_action = QAction("Pause (Ctrl+Alt+P)", menu)
     tray.pause_action.triggered.connect(dude.toggle_pause)
@@ -1983,12 +2013,33 @@ def build_tray(dude: Dude):
         act.triggered.connect(lambda _=False, k=kind: dude.life.trigger(k))
         lsub.addAction(act)
     tray.life_menu = lsub
+    asub = menu.addMenu("Aquarium (Cuttlefish Pet)")
+    for kind, label in (("ride", "Ride a cuttlefish"), ("carry", "Carry and throw one"), ("pet", "Pet one"),
+                        ("fight", "Fight one"), ("eat", "Eat one (for real)")):
+        act = QAction(label, asub)
+        act.triggered.connect(lambda _=False, k=kind: dude.aqua.start(k))
+        asub.addAction(act)
+    tray.aqua_menu = asub
     menu.addSeparator()
-    for attr in ("life_action", "ha_action"):
+    for attr in ("life_action", "ha_action", "aqua_action"):
         info = QAction("", menu)
         info.setEnabled(False)
         menu.addAction(info)
         setattr(tray, attr, info)
+    from PySide6.QtCore import QUrl
+    from PySide6.QtGui import QDesktopServices
+
+    menu.addSeparator()
+    au = QAction("Auto-update", menu)
+    au.setCheckable(True)
+    au.setChecked(dude.updater.auto)
+    au.toggled.connect(dude.updater.set_auto)
+    menu.addAction(au)
+    cu = QAction("Check for updates", menu)
+    cu.triggered.connect(lambda: dude.updater.check(manual=True))
+    menu.addAction(cu)
+    tray.messageClicked.connect(lambda: dude.update_url and QDesktopServices.openUrl(QUrl(dude.update_url)))
+    tray.update_actions = (au, cu)
     tray.setContextMenu(menu)
     tray.menu = menu
     tray.show()

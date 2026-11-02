@@ -247,3 +247,15 @@ def test_save_roundtrip(tmp_path):
     s["xp"] = 123
     s.write()
     assert Save(p)["xp"] == 123
+
+
+def test_starts_with_a_grudge(app, tmp_path, monkeypatch):
+    import life
+
+    (tmp_path / "dude_save.json").write_text('{"grudge": 8, "xp": 100}', encoding="utf-8")
+    monkeypatch.setattr(life, "HERE", tmp_path)
+    real_save = life.Save
+    monkeypatch.setattr(life, "Save", lambda path: real_save(tmp_path / "dude_save.json"))
+    _w32, clock, dude = _make(62)
+    _run(dude, clock, 2)
+    assert dude.life.save["grudge"] > 7 and dude.rage >= 0.45 and dude.life.level == 2 and dude.errors == 0

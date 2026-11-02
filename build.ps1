@@ -16,5 +16,7 @@ Compress-Archive -Force dist\DesktopDude publish\DesktopDude-standalone.zip
 
 $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
 if (-not $iscc) { $iscc = "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" }
-if (Test-Path $iscc) { & $iscc /Q Installer\DesktopDude.iss } else { Write-Warning "Inno Setup not found: skipped the installer" }
+$ver = (Select-String appdir.py -Pattern 'VERSION = "(.+)"').Matches[0].Groups[1].Value
+if (Test-Path $iscc) { & $iscc /Q "/DAppVersion=$ver" Installer\DesktopDude.iss } else { Write-Warning "Inno Setup not found: skipped the installer" }
+Write-Host "Built version $ver"
 Get-ChildItem publish

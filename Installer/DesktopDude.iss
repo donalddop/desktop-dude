@@ -7,7 +7,9 @@
 ; Expects the PyInstaller output in dist\DesktopDude\.
 
 #define AppName "Desktop Dude"
-#define AppVersion "1.0"
+#ifndef AppVersion
+  #define AppVersion "1.1"
+#endif
 #define AppPublisher "donalddop"
 #define AppUrl "https://github.com/donalddop/desktop-dude"
 #define AppExe "DesktopDude.exe"
@@ -34,6 +36,9 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+; Auto-update runs this silently while the old dude is quitting.
+CloseApplications=force
+RestartApplications=no
 
 [Languages]
 Name: "dutch"; MessagesFile: "compiler:Languages\Dutch.isl"
@@ -60,6 +65,8 @@ Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: startup
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchNow}"; Flags: nowait postinstall skipifsilent
+; Silent install = an auto-update: bring him straight back.
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: WizardSilent
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/f /im {#AppExe}"; Flags: runhidden; RunOnceId: "StopDude"

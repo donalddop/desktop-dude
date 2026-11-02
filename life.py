@@ -615,10 +615,7 @@ class Life:
         self.next_scan, self.next_save, self.next_tray, self.last_hit = 0.0, 30.0, 0.0, -9.0
         self.soot = 0.0
         self.t = 0.0
-        g = self.save["grudge"]
-        if g >= 1:
-            dude.rage = max(dude.rage, min(0.6, g * 0.06))
-            dude.terror.later(3.0, lambda: dude.terror.say("grudge"))
+        self.greeted = False  # the dude isn't fully built yet: grudge kicks in on the first frame
 
     # ---- facts
     @property
@@ -985,6 +982,11 @@ class Life:
         self.music.step(dt)
         self.weather.step(self.t)
         g = self.save["grudge"]
+        if not self.greeted:
+            self.greeted = True
+            if g >= 1:
+                d.rage = max(d.rage, min(0.6, g * 0.06))
+                d.terror.later(3.0, lambda: d.terror.say("grudge"))
         self.save.data["grudge"] = max(0.0, g - dt * 0.02 / 60)
         if g >= 1 and self.duel is None:
             d.rage = max(d.rage, min(0.45, g * 0.04))
