@@ -10,6 +10,13 @@ uv run --with pyinstaller pyinstaller --noconfirm --clean --windowed --name Desk
     desktop_dude.py
 if ($LASTEXITCODE) { throw "pyinstaller failed" }
 
+# PySide6 brings an older OpenSSL and PyInstaller lets it win over Python's own, which breaks
+# Python's _ssl (no https: no update checks, no weather). Python's newer copy serves Qt fine too.
+$pyDlls = Join-Path (uv run python -c "import sys; print(sys.base_prefix)") "DLLs"
+Copy-Item "$pyDlls\libssl-3-x64.dll", "$pyDlls\libcrypto-3-x64.dll" dist\DesktopDude\_internal\ -Force
+$st = Start-Process dist\DesktopDude\DesktopDude.exe -ArgumentList "--selftest" -Wait -PassThru
+if ($st.ExitCode -ne 0) { throw "selftest failed: the exe can't do https (see %LOCALAPPDATA%\DesktopDude\desktop_dude.log)" }
+
 New-Item -ItemType Directory -Force publish | Out-Null
 Copy-Item README.md, LICENSE dist\DesktopDude\
 Compress-Archive -Force dist\DesktopDude publish\DesktopDude-standalone.zip

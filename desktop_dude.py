@@ -2085,7 +2085,24 @@ def render_pose_sheet(path):
     img.save(str(path))
 
 
+def selftest() -> int:
+    """Used by build.ps1 on the frozen exe: can it do https (update checks, weather)?"""
+    try:
+        import ssl
+        import urllib.request
+
+        ssl.create_default_context()
+        assert hasattr(urllib.request, "HTTPSHandler")
+        log(f"selftest ok: {ssl.OPENSSL_VERSION}")
+        return 0
+    except Exception as e:  # noqa: BLE001
+        log(f"selftest FAILED: {e!r}")
+        return 1
+
+
 def main():
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
     app = QApplication(sys.argv)
     if "--poses" in sys.argv:
         render_pose_sheet(Path("pose_sheet.png"))
