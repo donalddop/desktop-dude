@@ -2085,6 +2085,19 @@ def render_pose_sheet(path):
     img.save(str(path))
 
 
+def use_windows_certificates():
+    """Verify TLS with Windows' own certificate store (like the browser does). Python's bundled view of it
+    misses roots Windows only fetches on demand, e.g. Let's Encrypt's newer ones (open-meteo)."""
+    try:
+        import truststore
+
+        truststore.inject_into_ssl()
+        return True
+    except Exception as e:  # noqa: BLE001 - not fatal: weather/updates just might fail
+        log(f"truststore unavailable: {e!r}")
+        return False
+
+
 def selftest() -> int:
     """Used by build.ps1 on the frozen exe: can it do https (update checks, weather)?"""
     try:
@@ -2093,6 +2106,7 @@ def selftest() -> int:
 
         ssl.create_default_context()
         assert hasattr(urllib.request, "HTTPSHandler")
+        assert use_windows_certificates(), "truststore"
         log(f"selftest ok: {ssl.OPENSSL_VERSION}")
         return 0
     except Exception as e:  # noqa: BLE001
@@ -2103,6 +2117,8 @@ def selftest() -> int:
 def main():
     if "--selftest" in sys.argv:
         sys.exit(selftest())
+    if IS_WIN:
+        use_windows_certificates()
     app = QApplication(sys.argv)
     if "--poses" in sys.argv:
         render_pose_sheet(Path("pose_sheet.png"))

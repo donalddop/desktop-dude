@@ -6,7 +6,7 @@ Remove-Item Env:VIRTUAL_ENV -ErrorAction SilentlyContinue
 
 uv run --with pyinstaller pyinstaller --noconfirm --clean --windowed --name DesktopDude `
     --icon assets\app.ico `
-    --hidden-import pycaw.pycaw --hidden-import pycaw.utils --collect-submodules comtypes `
+    --hidden-import truststore --hidden-import pycaw.pycaw --hidden-import pycaw.utils --collect-submodules comtypes `
     desktop_dude.py
 if ($LASTEXITCODE) { throw "pyinstaller failed" }
 
