@@ -1582,6 +1582,12 @@ class Dude(QWidget):
         self.shove = None if k >= 1 else [(sx, sy), (ex, ey), t]
 
     def hold_cursor(self, cur):
+        # Hard rule: never move the cursor while a mouse button is down. think()
+        # already lets go when it sees a click, but it reads the buttons earlier in
+        # the same tick, so check again right before the cursor is actually moved.
+        if self.w32.buttons_down():
+            self.grab_last = None
+            return
         if self.grab_last is not None:
             d = math.hypot(cur[0] - self.grab_last[0], cur[1] - self.grab_last[1])
             if d > 6:

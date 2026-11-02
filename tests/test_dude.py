@@ -554,3 +554,49 @@ def test_dude_kills_and_eats_a_cuttlefish(app):
             break
     assert ate and t.eaten == 1 and dude.errors == 0
     assert not any(isinstance(w, DeadFish) for w in t.fx)
+
+
+def _grabbing(seed):
+    w32, clock, dude = _make(seed)
+    dude.terror.enabled = dude.war.enabled = dude.arsenal.enabled = False
+    _run(dude, clock, 90)
+    dude.x = dude.world.left + 400.0
+    dude.y, dude.vx, dude.vy = dude.world.floor_at(dude.x), 0.0, 0.0
+    dude.on_ground, dude.plat_hwnd = True, None
+    dude.set_state(dd.GRAB, 2.6)
+    dude.struggle, dude.grab_last, dude.grab_dir = 0.0, None, 1
+    return w32, clock, dude
+
+
+def test_grab_never_moves_the_cursor_while_a_button_is_down(app):
+    w32, clock, dude = _grabbing(51)
+    start = (dude.world.left + 900, dude.world.floor_at(dude.x) - 300)
+    w32.cursor = start
+    w32.buttons = True
+    dude.hold_cursor(start)  # the last-moment check, even if think() missed the click
+    assert w32.cursor == start
+    _run(dude, clock, 60)
+    assert w32.cursor == start
+    assert dude.state != dd.GRAB and dude.errors == 0
+
+
+def test_grab_holds_the_cursor_when_no_button_is_down(app):
+    w32, _clock, dude = _grabbing(52)
+    start = (dude.world.left + 900, dude.world.floor_at(dude.x) - 300)
+    w32.cursor = start
+    w32.buttons = False
+    dude.hold_cursor(start)
+    assert w32.cursor != start  # pulled to his hand, so the guard is not always on
+    assert dude.grab_last == w32.cursor
+
+
+def test_shove_stops_the_moment_a_button_goes_down(app):
+    w32, clock, dude = _make(53)
+    dude.terror.enabled = dude.war.enabled = dude.arsenal.enabled = False
+    _run(dude, clock, 60)
+    start = tuple(int(v) for v in dude.world.clamp(dude.x + 40, dude.y - 80))
+    w32.cursor = start
+    w32.buttons = True
+    dude.start_shove(start, (start[0] + 240, start[1] - 160))
+    _run(dude, clock, 30)
+    assert w32.cursor == start and dude.shove is None
