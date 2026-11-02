@@ -64,8 +64,17 @@ Same rules: cursor is never flung while you hold a mouse button, windows snap ba
 
 - **Your apps:** watching something (YouTube, Netflix, VLC...)? He sits down with popcorn. Coding or in Claude?
   "Werk je wel, mattie?". Only the active window's title is read.
-- **Your music:** reads Windows' output peak meter (nothing is recorded) and dances on the beat: headbang,
-  hands up, running man, DJ scratch with headphones.
+- **Your music:** reads Windows' output peak meter and dances on the beat: headbang, hands up, running man,
+  DJ scratch with headphones. He can tell music from people talking (ears.py): a podcast or a video is loud
+  too, but he won't dance to it. Music has a periodic beat, speech has voice activity (Silero VAD); a vote
+  over the last ~18 s decides.
+- **Comments on what you watch (opt-in, Tray > Comment on videos/podcasts):** when people talk he listens to
+  ~20 s, a local [Whisper](https://github.com/SYSTRAN/faster-whisper) (small, CPU) writes it down and a local
+  [Ollama](https://ollama.com) model makes one cheeky line of it, in a speech bubble, every minute or two.
+  Everything stays on your PC: audio lives in memory only, nothing is saved or sent anywhere, and nothing is
+  transcribed while a call app (Teams, Discord, Zoom, ...) is playing sound. Needs Ollama with a chat model
+  (it picks one that's already loaded, else gemma/qwen/llama; force one with `"listen_model"` in
+  `dude_config.json`). The first time it downloads the Whisper model (~480 MB) to `%LOCALAPPDATA%\DesktopDude\models`.
 - **Day/night:** at night he wears a nightcap and falls asleep. Wake him up and he's furious. Mornings: coffee first.
 - **Grudge & levels:** `dude_save.json` remembers punches, throws, hits and duels across restarts. Grudge makes
   him angrier (and he'll challenge you to a duel). XP unlocks weapons: bat/pan/chicken/pie/herring first,

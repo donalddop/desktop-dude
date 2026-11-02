@@ -1092,6 +1092,14 @@ class Terror:
         self.bubble = Bubble(random.choice(lines))
         self.place_bubble()
 
+    def say_text(self, text):
+        """Say something that isn't a canned line (his comments on your videos). Longer lines stay up longer."""
+        if self.bubble is not None:
+            self.bubble.kill()
+        self.bubble = Bubble(text)
+        self.bubble.LIFE = max(Bubble.LIFE, 1.5 + 0.065 * len(text))
+        self.place_bubble()
+
     def place_bubble(self):
         if self.bubble is not None:
             self.bubble.follow(self.d.x, self.d.y - 115)

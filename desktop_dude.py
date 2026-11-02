@@ -2021,7 +2021,7 @@ def build_tray(dude: Dude):
         asub.addAction(act)
     tray.aqua_menu = asub
     menu.addSeparator()
-    for attr in ("life_action", "ha_action", "aqua_action"):
+    for attr in ("life_action", "ears_action", "ha_action", "aqua_action"):
         info = QAction("", menu)
         info.setEnabled(False)
         menu.addAction(info)
@@ -2029,6 +2029,12 @@ def build_tray(dude: Dude):
     from PySide6.QtCore import QUrl
     from PySide6.QtGui import QDesktopServices
 
+    li = QAction("Comment on videos/podcasts (local AI)", menu)
+    li.setCheckable(True)
+    li.setChecked(dude.life.ears.listen)
+    li.toggled.connect(dude.life.ears.set_listen)
+    menu.addAction(li)
+    tray.listen_action = li
     menu.addSeparator()
     au = QAction("Auto-update", menu)
     au.setCheckable(True)
@@ -2107,6 +2113,12 @@ def selftest() -> int:
         ssl.create_default_context()
         assert hasattr(urllib.request, "HTTPSHandler")
         assert use_windows_certificates(), "truststore"
+        if getattr(sys, "frozen", False):  # the ears' heavy bits must have made it into the bundle
+            import ctranslate2  # noqa: F401
+            import soundcard  # noqa: F401
+            from faster_whisper.vad import get_vad_model
+
+            get_vad_model()
         log(f"selftest ok: {ssl.OPENSSL_VERSION}")
         return 0
     except Exception as e:  # noqa: BLE001

@@ -6,6 +6,8 @@ sounds/
 dude_save.json
 ha.json
 dude_config.json
+models/
+_probe/
 .pytest_cache/
 .ruff_cache/
 build/

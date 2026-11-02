@@ -25,6 +25,7 @@ from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainterPath, QPen, QP
 
 from appdir import DATA
 from arsenal import WEAPONS, PopText
+from ears import Ears
 from terror import LINES, _log
 from warfare import OUTLINE, FxWindow, _painter
 
@@ -163,6 +164,7 @@ class Music:
         self.last_beat = -9.0
         self.beat = False
         self.t = 0.0
+        self.kind = None  # what Ears hears: music / talk / other / None
         if real:
             try:
                 import ctypes
@@ -199,7 +201,7 @@ class Music:
 
     @property
     def playing(self):
-        return self.loud_for > 2.0
+        return self.loud_for > 2.0 and self.kind != "talk"  # podcasts and videos are loud too, but no dance
 
 
 class Weather:
@@ -599,6 +601,7 @@ class Life:
         self.P = kit["Pose"]
         self.save = Save(HERE / "dude_save.json" if real else None)
         self.music = Music(real)
+        self.ears = Ears(real)
         self.weather = Weather(real)
         self.ha = HomeAssistant(real)
         self.hour_fn = (lambda: time.localtime().tm_hour) if real else (lambda: 14)
@@ -811,7 +814,7 @@ class Life:
             self.begin("dance")
             return True
         app = self.app()
-        if app == "watch" and cd["watch"] <= 0 and random.random() < 0.12 * dt:
+        if (app == "watch" or self.ears.kind == "talk") and cd["watch"] <= 0 and random.random() < 0.12 * dt:
             cd["watch"] = random.uniform(40, 90)
             self.begin("watch")
             return True
@@ -862,7 +865,8 @@ class Life:
                 g["move"] = (g["move"] + random.randint(1, 3)) % 4
                 d.f = -d.f
         g["ph"] = min(1.0, g["ph"] + dt * 3)
-        if (not self.music.playing and self.music.loud_for == 0 and d.st > 2) or d.st > d.state_len:
+        if ((not self.music.playing and (self.music.loud_for == 0 or self.music.kind == "talk") and d.st > 2)
+                or d.st > d.state_len):
             self.stand_up()
         elif d.rage > 0.5 and math.hypot(cur[0] - d.x, cur[1] - (d.y - 50)) < 70:
             self.stand_up(d.rage)
@@ -979,8 +983,10 @@ class Life:
         for k in self.cd:
             self.cd[k] -= dt
         self.soot = max(0.0, self.soot - dt)
+        self.music.kind = self.ears.kind
         self.music.step(dt)
         self.weather.step(self.t)
+        self.hear_comments()
         g = self.save["grudge"]
         if not self.greeted:
             self.greeted = True
@@ -993,6 +999,7 @@ class Life:
         if self.t >= self.next_scan:
             self.next_scan = self.t + 2.0
             self.title = d.w32.foreground_title()
+            self.ears.title = self.title
             if int(self.t) % 20 < 2:
                 self.parts = d.w32.taskbar_parts()
                 d.terror.probe.request("icons")
@@ -1031,6 +1038,18 @@ class Life:
             self.next_tray = self.t + 2.0
             self.update_tray()
 
+    def hear_comments(self):
+        """Ears' comments on what you're watching: said out loud when he's chilling, kept for later when busy."""
+        d = self.d
+        if d.state not in CHILL + ("watch", "sit", "dance", "coffee") or self.duel is not None:
+            return
+        line = self.ears.pop()
+        if line:
+            d.terror.say_text(line)
+            if d.state in CHILL and d.on_ground:
+                d.f = 1 if self.d.w32.cursor_pos()[0] > d.x else -1
+                d.set_state("taunt", 1.0)
+
     def update_tray(self):
         tray = getattr(self.d, "tray", None)
         a = getattr(tray, "life_action", None) if tray else None
@@ -1038,6 +1057,9 @@ class Life:
             s = self.save
             a.setText(f"Level {self.level} · {s['xp']} XP · grudge {s['grudge']:.1f} · "
                       f"duels {s['duels_won']}-{s['duels_lost']}")
+        e = getattr(tray, "ears_action", None) if tray else None
+        if e is not None:
+            e.setText(self.ears.status)
         b = getattr(tray, "ha_action", None) if tray else None
         if b is not None:
             b.setText(f"Home Assistant: {self.ha.status}")
