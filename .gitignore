@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.log
+pose_sheet.png
+sounds/
+dude_save.json
+ha.json
+dude_config.json
+.pytest_cache/
+.ruff_cache/
