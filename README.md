@@ -50,6 +50,11 @@ He speaks Amsterdam street Dutch and swears a lot. You've been warned.
 
 Tests: `uv run --group dev pytest`. Pose sheet: `uv run desktop_dude.py --poses`.
 
+**Tuning (how often and how hard he goes off):** every number for rage thresholds, terror frequency and
+cooldowns, the odds per terror act, and when drones/tank/airstrike come lives in `tuning.py`. Override any of
+them in a `"tuning"` block in `dude_config.json`, e.g. `{"tuning": {"terror_every_calm_s": 90, "rage_tank": 0.75,
+"terror_weights": {"popup": 0.5}}}`, and restart him. Typos are skipped and logged in `desktop_dude.log`.
+
 ## Arsenal (Ctrl+Alt+A)
 
 When he's chasing you he grabs a random weapon (more serious stuff the angrier he gets). Tray > Weapon test lets you pick one.

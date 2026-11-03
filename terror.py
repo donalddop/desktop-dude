@@ -30,6 +30,7 @@ from PySide6.QtGui import (
     QRadialGradient,
 )
 
+import tuning
 from appdir import DATA
 from warfare import Blast, FxWindow, _painter
 
@@ -1071,7 +1072,8 @@ class Terror:
         self.surf = self.steal = self.hunt = None
         self.eaten = 0
         self.flee_dir, self.flip_t = 1, 0.0
-        self.t, self.cd, self.blackout_cd, self.count = 0.0, 25.0, 0.0, 0
+        self.tune = tuning.current()
+        self.t, self.cd, self.blackout_cd, self.count = 0.0, self.tune.terror_first_delay_s, 0.0, 0
 
     # ---- helpers
     def later(self, delay, fn):
@@ -1151,23 +1153,28 @@ class Terror:
         d = self.d
         if not self.enabled or self.cd > 0 or d.state not in ("idle", "wander") or self.busy():
             return
-        angry = d.rage >= 0.4
-        if random.random() >= (1 / 12 if angry else 1 / 45) * dt:
+        tn = self.tune
+        angry = d.rage >= tn.rage_angry
+        every = tn.terror_every_angry_s if angry else tn.terror_every_calm_s
+        if every <= 0 or random.random() >= dt / every:
             return
-        opts = [("graffiti", 3.0), ("popup", 1.5), ("taunt", 1.0)]
+        kinds = ["graffiti", "popup", "taunt"]
         if self.visible_icons():
-            opts.append(("steal", 2.0))
+            kinds.append("steal")
         if d.on_ground and d.plat_hwnd:
-            opts.append(("surf", 2.5))
+            kinds.append("surf")
         if self.probe.fish:
-            opts.append(("hunt", 2.0))
+            kinds.append("hunt")
         if angry:
-            opts += [("glass", 2.5), ("quake", 1.5)]
-        if d.rage >= 0.7 and self.blackout_cd <= 0:
-            opts.append(("blackout", 1.2))
-        kind = random.choices([k for k, _ in opts], weights=[w for _, w in opts])[0]
+            kinds += ["glass", "quake"]
+        if d.rage >= tn.rage_blackout and self.blackout_cd <= 0:
+            kinds.append("blackout")
+        weights = [tn.terror_weights.get(k, 0.0) for k in kinds]
+        if sum(weights) <= 0:
+            return
+        kind = random.choices(kinds, weights=weights)[0]
         if self.trigger(kind):
-            self.cd = random.uniform(10, 20) if angry else random.uniform(30, 60)
+            self.cd = random.uniform(*(tn.terror_cooldown_angry_s if angry else tn.terror_cooldown_calm_s))
 
     # ---- the acts
     def _taunt(self):
@@ -1212,7 +1219,7 @@ class Terror:
         if d.state not in ("tanking", "held"):
             d.vx, d.lunge_v, d.kick_target = 0.0, 0.0, None
             d.set_state("slash", 0.6)
-        self.blackout_cd = 120.0
+        self.blackout_cd = self.tune.blackout_cooldown_s
         self.later(0.3, lambda: self.fx.append(Blast(d.x + d.f * 40, d.y - 8, 14, 0.3)))
         self.later(0.38, self._start_blackout)
         self.later(1.0, lambda: self.say("blackout"))

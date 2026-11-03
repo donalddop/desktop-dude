@@ -15,6 +15,8 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QWidget
 
+import tuning
+
 OLIVE, DARK = QColor(78, 94, 52), QColor(32, 36, 26)
 OUTLINE = QColor(255, 255, 255, 170)
 BASE_FLAGS = Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.WindowDoesNotAcceptFocus
@@ -700,7 +702,8 @@ class War:
         self.mines: list[Mine] = []
         self.flaks: list[Flak] = []
         self.air_pending, self.air_target = 0.0, 0.0
-        self.drone_cd, self.tank_cd, self.air_cd = 6.0, 12.0, 20.0
+        tn = self.tune = tuning.current()
+        self.drone_cd, self.tank_cd, self.air_cd = tn.drones_first_s, tn.tank_first_s, tn.air_first_s
 
     def add_fx(self, w):
         self.fx.append(w)
@@ -737,31 +740,37 @@ class War:
     def launch_drones(self, n):
         for i in range(n):
             self.drones.append(Drone(self.d.x, self.d.y - 70, i * math.tau / n))
-        self.drone_cd = 45.0
+        self.drone_cd = self.tune.drones_cooldown_s
 
     def deploy_tank(self):
         self.tank = Tank(self.d.x, self.d.world)
-        self.tank_cd = 75.0
+        self.tank_cd = self.tune.tank_cooldown_s
 
     def call_airstrike(self, target_x):
         self.air_pending, self.air_target = 1.6, target_x
         self.banner = Banner(self.d.world)
-        self.air_cd = 60.0
+        self.air_cd = self.tune.air_cooldown_s
 
     def maybe_escalate(self, dt, cur, on_ground):
-        """Roll for heavy weapons. Returns "air", "tank", "drones" or None."""
+        """Roll for heavy weapons. Returns "air", "tank", "drones" or None. Numbers: tuning.py."""
         if not self.enabled:
             return None
-        r = self.d.rage
+        tn, r = self.tune, self.d.rage
         air_busy = self.plane is not None or self.air_pending > 0
-        if r >= 0.85 and self.air_cd <= 0 and not air_busy and random.random() < 0.35 * dt:
+        if r >= tn.rage_air and self.air_cd <= 0 and not air_busy and random.random() < tn.air_rate * dt:
             self.call_airstrike(cur[0])
             return "air"
-        if r >= 0.65 and self.tank_cd <= 0 and self.tank is None and on_ground and random.random() < 0.35 * dt:
+        if (
+            r >= tn.rage_tank
+            and self.tank_cd <= 0
+            and self.tank is None
+            and on_ground
+            and random.random() < tn.tank_rate * dt
+        ):
             self.deploy_tank()
             return "tank"
-        if r >= 0.45 and self.drone_cd <= 0 and not self.drones and random.random() < 0.5 * dt:
-            self.launch_drones(3 if r >= 0.8 else 2)
+        if r >= tn.rage_drones and self.drone_cd <= 0 and not self.drones and random.random() < tn.drones_rate * dt:
+            self.launch_drones(3 if r >= tn.rage_drones_three else 2)
             return "drones"
         return None
 
