@@ -65,6 +65,27 @@ When he's chasing you he grabs a random weapon (more serious stuff the angrier h
 
 Same rules: cursor is never flung while you hold a mouse button, windows snap back, holes and splats fade. Punch or throw him and he drops it.
 
+## Your bare desktop (vandal.py, graffiti.py)
+
+When he can see bare wallpaper (no windows in the way) he gets creative, on the wallpaper layer itself: behind
+your icons and under every window, like it's really on the wall (the Wallpaper Engine trick: a window parented
+to the WorkerW behind the desktop icons). All of it is temporary and owned by the dude: Tray > Clear graffiti,
+or quit him, and your desktop is back. Your real wallpaper file and icon layout are never touched.
+
+- **Graffiti on your wallpaper:** tags, throw-ups and pieces in a Mokum style: bubble letters with a fat outline,
+  3D drop, chrome / Ajax-red / toxic / oranje palettes, drips, shine, crowns, XXX crosses and a signature.
+  Words like MOKUM, 020, BOEF, SKEER, *los mokumos*, *grand theft fiets*. Fades after 20 minutes. No bare
+  wallpaper in sight? Then he sprays on top of the screen, high up and out of the way of where you type
+  (click a tag to wipe it).
+- **A hole in the wall:** he punches through your wallpaper: bricks behind it, cracks, and a Mokum rat peeking
+  out. After a bit he tapes it up (*niemand merkt het*) and it fades.
+- **Icon football:** he kicks a copy of one of your icons around the bottom of the screen, then scores it back
+  home. The real icon hides under a patch of your own wallpaper meanwhile. Swipe your cursor through the ball
+  or click it to steal it from him.
+
+Tray > Desktop vandalism triggers each on demand. Fonts: Sedgwick Ave Display, Rubik Bubbles (OFL) and Permanent
+Marker (Apache 2.0) from Google Fonts, licenses in `assets/fonts`.
+
 ## His life (life.py)
 
 - **Your apps:** watching something (YouTube, Netflix, VLC...)? He sits down with popcorn. Coding or in Claude?

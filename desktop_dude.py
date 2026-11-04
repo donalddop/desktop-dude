@@ -58,6 +58,7 @@ from arsenal import WEAPONS, Arsenal
 from life import Life
 from terror import TERROR_MENU, Terror
 from updater import Updater
+from vandal import Vandal
 from warfare import War
 
 IS_WIN = sys.platform == "win32"
@@ -317,6 +318,95 @@ class Win32:
         return r.l <= m.l and r.t <= m.t and r.r >= m.r and r.b >= m.b
 
 
+    # the wallpaper layer: the WorkerW window behind the desktop icons (the Wallpaper Engine trick)
+    def _workerw(self):
+        ct, wt, u = self.ct, self.wt, self.u
+        ww = getattr(self, "_ww", None)
+        if ww and u.IsWindow(ww):
+            return ww
+        self._ww = None
+        try:
+            H = wt.HWND
+            u.IsWindow.argtypes = [H]
+            u.FindWindowW.argtypes = [wt.LPCWSTR, wt.LPCWSTR]
+            u.FindWindowW.restype = H
+            u.FindWindowExW.argtypes = [H, H, wt.LPCWSTR, wt.LPCWSTR]
+            u.FindWindowExW.restype = H
+            u.SendMessageTimeoutW.argtypes = [H, wt.UINT, wt.WPARAM, wt.LPARAM, wt.UINT, wt.UINT,
+                                              ct.POINTER(ct.c_size_t)]
+            progman = u.FindWindowW("Progman", None)
+            if not progman:
+                return None
+            res = ct.c_size_t()
+            u.SendMessageTimeoutW(progman, 0x052C, 0xD, 0x1, 0, 1000, ct.byref(res))
+            found = []
+
+            def cb(h, _):
+                if u.FindWindowExW(h, None, "SHELLDLL_DefView", None):
+                    w = u.FindWindowExW(None, h, "WorkerW", None)
+                    if w:
+                        found.append(w)
+                return True
+
+            u.EnumWindows(self.WNDENUMPROC(cb), 0)
+            # Windows 11 24H2 keeps the WorkerW inside Progman instead
+            self._ww = found[0] if found else u.FindWindowExW(progman, None, "WorkerW", None)
+        except Exception:  # noqa: BLE001 - no wallpaper layer: he just won't vandalise it
+            self._ww = None
+        return self._ww or None
+
+    def wall_origin(self):
+        ww = self._workerw()
+        if not ww:
+            return None
+        pt = self.wt.POINT(0, 0)
+        self.u.ClientToScreen.argtypes = [self.wt.HWND, self.ct.POINTER(self.wt.POINT)]
+        self.u.ClientToScreen(ww, self.ct.byref(pt))
+        return pt.x, pt.y
+
+    def wall_adopt(self, hwnd):
+        ww = self._workerw()
+        if not ww:
+            return False
+        self.u.SetParent.argtypes = [self.wt.HWND, self.wt.HWND]
+        self.u.SetParent.restype = self.wt.HWND
+        return bool(self.u.SetParent(hwnd, ww))
+
+    def wallpaper_grab(self, x, y, w, h):
+        """What your wallpaper looks like at x, y, w, h (without icons): PrintWindow of the wallpaper layer."""
+        ww = self._workerw()
+        if not ww:
+            return None
+        try:
+            from PySide6.QtGui import QImage
+
+            ct, wt, u = self.ct, self.wt, self.u
+            g = ct.WinDLL("gdi32")
+            vp = ct.c_void_p
+            for fn, res, args in (("CreateCompatibleDC", vp, [vp]), ("CreateCompatibleBitmap", vp, [vp, ct.c_int, ct.c_int]),
+                                  ("SelectObject", vp, [vp, vp]), ("DeleteObject", ct.c_int, [vp]),
+                                  ("DeleteDC", ct.c_int, [vp])):
+                getattr(g, fn).restype, getattr(g, fn).argtypes = res, args
+            u.GetDC.restype, u.GetDC.argtypes = vp, [wt.HWND]
+            u.ReleaseDC.argtypes = [wt.HWND, vp]
+            u.PrintWindow.argtypes = [wt.HWND, vp, wt.UINT]
+            r = self.RECT()
+            u.GetWindowRect(ww, ct.byref(r))
+            sdc = u.GetDC(None)
+            mdc = g.CreateCompatibleDC(sdc)
+            bmp = g.CreateCompatibleBitmap(sdc, r.r - r.l, r.b - r.t)
+            old = g.SelectObject(mdc, bmp)
+            u.PrintWindow(ww, mdc, 2)
+            g.SelectObject(mdc, old)
+            img = QImage.fromHBITMAP(bmp)
+            g.DeleteObject(bmp)
+            g.DeleteDC(mdc)
+            u.ReleaseDC(None, sdc)
+            return img.copy(int(x - r.l), int(y - r.t), int(w), int(h))
+        except Exception:  # noqa: BLE001
+            return None
+
+
 class FakeWin32:
     """Stand-in for tests / non-Windows runs."""
 
@@ -374,6 +464,15 @@ class FakeWin32:
 
     def foreground_title(self):
         return self.title
+
+    def wall_origin(self):
+        return (0, 0)
+
+    def wall_adopt(self, hwnd):
+        return True
+
+    def wallpaper_grab(self, x, y, w, h):
+        return None
 
     def taskbar_parts(self):
         return dict(self.parts)
@@ -979,6 +1078,7 @@ class Dude(QWidget):
         self.update_url = None
         self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat}, real=isinstance(w32, Win32))
         self.aqua = Aquarium(self, self.life.kit, real=isinstance(w32, Win32))
+        self.vandal = Vandal(self, self.life.kit)
         self.fx: list[tuple] = []
         self.errors = 0
         self.tray = None
@@ -1015,6 +1115,8 @@ class Dude(QWidget):
                 self.life.release()
             if getattr(self, "aqua", None) is not None:
                 self.aqua.release()
+            if getattr(self, "vandal", None) is not None:
+                self.vandal.release()
             self.sync_visible()
         self.x, self.y = self.world.spawn
         self.vx = self.vy = 0.0
@@ -1127,6 +1229,7 @@ class Dude(QWidget):
         self.arsenal.step(dt, cur, self.w32.buttons_down())
         self.life.step(dt, cur, self.w32.buttons_down())
         self.aqua.step(dt, cur, self.w32.buttons_down())
+        self.vandal.step(dt, cur, self.w32.buttons_down())
         self.cracks = [c for c in self.cracks if c.step(dt)]
         self.fx = [(x, y, a + dt, k) for x, y, a, k in self.fx if a + dt < 0.6]
         self.place()
@@ -1163,6 +1266,8 @@ class Dude(QWidget):
         dist = math.hypot(dx, cy - (self.y - 50))
         btn = self.w32.buttons_down()
 
+        if self.vandal.think(dt, cur, btn):
+            return
         if self.aqua.think(dt, cur, btn):
             return
         if self.life.think(dt, cur, btn):
@@ -1604,6 +1709,7 @@ class Dude(QWidget):
         self.arsenal.release()
         self.life.release()
         self.aqua.release()
+        self.vandal.release()
         self.shaker.restore_all()
         self.shove = None
         for w in self.rockets + self.booms:
@@ -1615,7 +1721,7 @@ class Dude(QWidget):
     # ---- visuals
     def make_pose(self):
         s, st = self.state, self.st
-        p = self.aqua.pose() or self.life.pose() or self.arsenal.pose()
+        p = self.vandal.pose() or self.aqua.pose() or self.life.pose() or self.arsenal.pose()
         if p is not None:
             return p
         if s == HELD:
@@ -1881,6 +1987,7 @@ class Dude(QWidget):
         self.arsenal.set_visible(vis)
         self.life.set_visible(vis)
         self.aqua.set_visible(vis)
+        self.vandal.set_visible(vis)
 
     def toggle_pause(self):
         self.paused = not self.paused
@@ -1933,6 +2040,7 @@ class Dude(QWidget):
 
     def clear_graffiti(self):
         self.terror.clear_graffiti()
+        self.vandal.clear()
 
     def enrage(self):
         """Demo button: full rage, arsenal unlocked."""
@@ -2037,6 +2145,13 @@ def build_tray(dude: Dude):
         act.triggered.connect(lambda _=False, k=kind: dude.aqua.start(k))
         asub.addAction(act)
     tray.aqua_menu = asub
+    vsub = menu.addMenu("Desktop vandalism")
+    for kind, label in (("piece", "Graffiti on the wallpaper"), ("hole", "Punch a hole in the wallpaper"),
+                        ("football", "Icon football")):
+        act = QAction(label, vsub)
+        act.triggered.connect(lambda _=False, k=kind: dude.vandal.start(k))
+        vsub.addAction(act)
+    tray.vandal_menu = vsub
     menu.addSeparator()
     for attr in ("life_action", "ears_action", "ha_action", "aqua_action"):
         info = QAction("", menu)
@@ -2136,6 +2251,9 @@ def selftest() -> int:
             from faster_whisper.vad import get_vad_model
 
             get_vad_model()
+            import graffiti
+
+            assert (graffiti.BASE / "assets" / "fonts" / graffiti.FONT_FILES["bubble"]).exists(), "fonts"
         log(f"selftest ok: {ssl.OPENSSL_VERSION}")
         return 0
     except Exception as e:  # noqa: BLE001

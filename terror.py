@@ -32,6 +32,7 @@ from PySide6.QtGui import (
 
 import tuning
 from appdir import DATA
+from graffiti import Piece
 from warfare import Blast, FxWindow, _painter
 
 LOG = DATA / "desktop_dude.log"
@@ -678,29 +679,15 @@ class Blackout(FxWindow):
 
 
 class Graffiti(FxWindow):
-    """Spray tag. Sticks until you click it."""
+    """Spray piece on top of everything, high up on the screen (when there's no bare wallpaper to be had).
+    Sticks until you click it."""
 
-    W, H = 330, 150
-
-    def __init__(self, x, y):
+    def __init__(self, x, y, piece=None):
+        self.piece = piece or Piece(random.choice(("tag", "throwup", "throwup")), scale=0.8)
+        self.W, self.H = self.piece.size()
         super().__init__(self.W, self.H, clickable=True)
         self.place_at(x, y)
-        self.text = random.choice(TAGS)
-        self.col = QColor(*random.choice(NEON))
-        self.doodle = random.choice(("smiley", "crown", "arrow", "star", None))
-        self.angle = random.uniform(-12, 8)
         self.progress, self.fading = 0.0, None
-        font = QFont("Impact")
-        font.setPixelSize(44 if len(self.text) < 9 else 34)
-        font.setWeight(QFont.Black)
-        font.setItalic(True)
-        path = QPainterPath()
-        path.addText(0, 0, font, self.text)
-        br = path.boundingRect()
-        self.path = path.translated(-br.center().x(), -br.center().y())
-        self.half = br.width() / 2
-        self.bottom = br.height() / 2
-        self.drips = [(random.uniform(-self.half, self.half), random.uniform(10, 32)) for _ in range(random.randint(2, 4))]
         self.show()
 
     def mousePressEvent(self, e):
@@ -720,50 +707,7 @@ class Graffiti(FxWindow):
         return True
 
     def paintEvent(self, _):
-        qp = _painter(self)
-        qp.translate(self.W / 2, self.H / 2)
-        qp.rotate(self.angle)
-        reveal = -self.half - 10 + (2 * self.half + 80) * self.progress
-        qp.setClipRect(QRectF(-self.W, -self.H, reveal + self.W, 2 * self.H))
-        c = self.col
-        qp.setBrush(Qt.NoBrush)
-        for w, a in ((16, 35), (10, 80)):
-            qp.setPen(QPen(QColor(c.red(), c.green(), c.blue(), a), w, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-            qp.drawPath(self.path)
-        qp.setPen(QPen(QColor(15, 15, 15, 220), 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-        qp.setBrush(c)
-        qp.drawPath(self.path)
-        qp.setPen(QPen(c, 3, Qt.SolidLine, Qt.RoundCap))
-        for dx, ln in self.drips:
-            y0 = self.bottom - 6
-            qp.drawLine(QPointF(dx, y0), QPointF(dx, y0 + ln))
-            qp.drawEllipse(QPointF(dx, y0 + ln), 2.5, 2.5)
-        self.draw_doodle(qp, self.half + 28, -6)
-
-    def draw_doodle(self, qp, x, y):
-        qp.setPen(QPen(self.col, 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-        qp.setBrush(Qt.NoBrush)
-        if self.doodle == "smiley":
-            qp.drawEllipse(QPointF(x, y), 17, 17)
-            qp.drawPoint(QPointF(x - 6, y - 5))
-            qp.drawPoint(QPointF(x + 6, y - 5))
-            qp.drawArc(QRectF(x - 9, y - 6, 18, 14), 200 * 16, 140 * 16)
-        elif self.doodle == "crown":
-            qp.drawPolyline(QPolygonF([QPointF(x - 18, y + 12), QPointF(x - 18, y - 8), QPointF(x - 9, y + 2),
-                                       QPointF(x, y - 14), QPointF(x + 9, y + 2), QPointF(x + 18, y - 8),
-                                       QPointF(x + 18, y + 12), QPointF(x - 18, y + 12)]))
-        elif self.doodle == "arrow":
-            qp.drawLine(QPointF(x - 18, y + 14), QPointF(x + 14, y - 14))
-            qp.drawPolyline(QPolygonF([QPointF(x + 1, y - 14), QPointF(x + 14, y - 14), QPointF(x + 14, y - 1)]))
-        elif self.doodle == "star":
-            pts = []
-            for i in range(10):
-                r = 18 if i % 2 == 0 else 8
-                a = -math.pi / 2 + i * math.pi / 5
-                pts.append(QPointF(x + math.cos(a) * r, y + math.sin(a) * r))
-            pts.append(pts[0])
-            qp.drawPolyline(QPolygonF(pts))
-
+        self.piece.paint(_painter(self), self.W / 2, self.H / 2, self.progress)
 
 class Bubble(FxWindow):
     """Speech bubble above his head. Big and readable, wraps long lines."""
@@ -1232,12 +1176,20 @@ class Terror:
         d.w32.bring_to_top(int(d.winId()))
 
     def _graffiti(self):
+        d, wd = self.d, self.d.world
+        vandal = getattr(d, "vandal", None)
+        if vandal is not None and not vandal.job and vandal.start_piece():
+            return True  # bare wallpaper in sight: it goes on the wall, behind your icons
         if len(self.graffiti) >= 15:
             return False
-        d, wd = self.d, self.d.world
-        x = min(max(d.x + d.f * 170, wd.left + 170), wd.right - 170)
-        y = min(max(d.y - 130, wd.top + 80), wd.bottom - 80)
-        self.graffiti.append(Graffiti(x, y))
+        piece = Piece(random.choice(("tag", "throwup", "throwup")), scale=0.8)
+        w, h = piece.size()
+        s = wd.screen_at(d.x)
+        # high up, out of the way of where you type
+        x = random.uniform(s[0] + w / 2 + 20, s[2] - w / 2 - 20) if s[2] - s[0] > w + 40 else (s[0] + s[2]) / 2
+        lo = s[1] + h / 2 + 15
+        y = random.uniform(lo, max(lo, s[1] + (s[4] - s[1]) * 0.38))
+        self.graffiti.append(Graffiti(x, y, piece))
         d.vx = 0.0
         d.f = 1 if x >= d.x else -1
         d.set_state("spray", 1.4)
