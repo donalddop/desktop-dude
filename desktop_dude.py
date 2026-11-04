@@ -51,6 +51,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
+import tuning
 from appdir import DATA, VERSION
 from aquarium import Aquarium
 from arsenal import WEAPONS, Arsenal
@@ -969,6 +970,7 @@ class Dude(QWidget):
         self.cracks: list[Crack] = []
         self.rockets: list[Rocket] = []
         self.booms: list[Boom] = []
+        self.tune = tuning.current()
         self.war = War(self)
         self.terror = Terror(self, real=isinstance(w32, Win32))
         self.arsenal = Arsenal(self, Pose, Slash)
@@ -1101,7 +1103,7 @@ class Dude(QWidget):
             self.next_world = now + 0.15
             self.refresh_world(now)
         cur = self.w32.cursor_pos()
-        self.rage = max(0.0, self.rage - 0.012 * dt)
+        self.rage = max(0.0, self.rage - self.tune.rage_cooldown_per_s * dt)
         self.attack_cd -= dt
         self.bazooka_cd -= dt
         self.katana_cd -= dt
@@ -1484,7 +1486,7 @@ class Dude(QWidget):
             self.vx, self.vy = math.cos(ang) * 700, min(-500.0, math.sin(ang) * 700)
             self.spin_v = random.choice((-10.0, 10.0))
             self.on_ground, self.plat_hwnd = False, None
-            self.rage = min(1.0, self.rage + 0.1)
+            self.rage = min(1.0, self.rage + self.tune.rage_rocket_jump)
             self.set_state(RAGDOLL)
             self.terror.say("boom")
             self.life.dude_hit("boom")
@@ -1807,7 +1809,7 @@ class Dude(QWidget):
         self.add_fx(g.x(), g.y(), "clang")
         self.terror.sfx.play("clang")
         self.f = 1 if g.x() >= self.x else -1
-        self.rage = min(1.0, self.rage + 0.05)
+        self.rage = min(1.0, self.rage + self.tune.rage_parry)
         self.kick_target, self.lunge_v = None, 0.0
         self.set_state(SLASH, 0.6)  # counter-attack
         return True
@@ -1853,7 +1855,8 @@ class Dude(QWidget):
                 vx, vy = vx * 2600 / spd, vy * 2600 / spd
             self.vx, self.vy = vx, vy
             self.spin_v = vx / 120 + random.uniform(-3, 3)
-            self.rage = min(1.0, self.rage + 0.15 + min(spd, 2600) / 2600 * 0.2)
+            tn = self.tune
+            self.rage = min(1.0, self.rage + tn.rage_throw + min(spd, 2600) / 2600 * tn.rage_throw_speed_bonus)
             self.terror.on_hit("thrown")
             self.life.dude_hit("thrown")
         else:  # punch
@@ -1861,7 +1864,7 @@ class Dude(QWidget):
                 return
             d = 1 if self.x >= g.x() else -1
             self.vx, self.vy, self.spin_v = 420.0 * d, -480.0, 9.0 * d
-            self.rage = min(1.0, self.rage + 0.12)
+            self.rage = min(1.0, self.rage + self.tune.rage_punch)
             self.terror.on_hit("punched")
             self.life.dude_hit("punched")
             self.add_fx(g.x(), g.y(), "pow")
@@ -1949,6 +1952,13 @@ class Dude(QWidget):
         self.rage = 0.0
         self.attack_cd = 5.0
 
+    def reload_tuning(self):
+        """Re-read the "tuning" block of dude_config.json without a restart (rage, terror and war)."""
+        self.tune = self.terror.tune = self.war.tune = tuning.reload()
+        if self.tray:
+            self.tray.showMessage("Desktop Dude", "Tuning herladen uit dude_config.json.")
+        return self.tune
+
     def quit(self):
         self.release_everything()
         for c in self.cracks:
@@ -1984,6 +1994,7 @@ def build_tray(dude: Dude):
         ("Duel! (Ctrl+Alt+D)", dude.life.toggle_duel),
         ("Summon mini-dudes", dude.life.spawn_minions),
         ("Clear graffiti", dude.clear_graffiti),
+        ("Reload tuning", dude.reload_tuning),
         ("Terror mode: on", dude.toggle_terror),
         ("Sound: off", dude.toggle_sound),
         ("Respawn", dude.respawn),

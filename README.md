@@ -50,10 +50,10 @@ He speaks Amsterdam street Dutch and swears a lot. You've been warned.
 
 Tests: `uv run --group dev pytest`. Pose sheet: `uv run desktop_dude.py --poses`.
 
-**Tuning (how often and how hard he goes off):** every number for rage thresholds, terror frequency and
+**Tuning (how often and how hard he goes off):** every number for rage thresholds, how fast rage cools down and how much a punch/throw/parry adds, terror frequency and
 cooldowns, the odds per terror act, and when drones/tank/airstrike come lives in `tuning.py`. Override any of
 them in a `"tuning"` block in `dude_config.json`, e.g. `{"tuning": {"terror_every_calm_s": 90, "rage_tank": 0.75,
-"terror_weights": {"popup": 0.5}}}`, and restart him. Typos are skipped and logged in `desktop_dude.log`.
+"terror_weights": {"popup": 0.5}}}`, then tray > Reload tuning (no restart needed). Typos are skipped and logged in `desktop_dude.log`.
 
 ## Arsenal (Ctrl+Alt+A)
 

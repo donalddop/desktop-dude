@@ -600,3 +600,32 @@ def test_shove_stops_the_moment_a_button_goes_down(app):
     dude.start_shove(start, (start[0] + 240, start[1] - 160))
     _run(dude, clock, 30)
     assert w32.cursor == start and dude.shove is None
+
+
+def test_reload_tuning_reaches_rage_terror_and_war(app, monkeypatch):
+    w32 = dd.FakeWin32()
+    clock = [0.0]
+    dude = dd.Dude(w32, clock=lambda: clock[0])
+    dude.timer.stop()
+    assert dude.tune is dude.terror.tune is dude.war.tune
+    new = dd.tuning.Tuning(rage_cooldown_per_s=0.5, rage_tank=0.1)
+    monkeypatch.setattr(dd.tuning, "reload", lambda: new)
+    assert dude.reload_tuning() is new
+    assert dude.tune is new and dude.terror.tune is new and dude.war.tune is new
+    dude.rage = 1.0
+    clock[0] += 0.05
+    dude.tick(0.05)
+    assert dude.rage <= 1.0 - 0.5 * 0.05 + 1e-9  # cools down at the reloaded speed
+    dude.quit()
+
+
+def test_tray_has_reload_tuning(app):
+    dude = dd.Dude(dd.FakeWin32(), clock=lambda: 0.0)
+    dude.timer.stop()
+    tray = dd.build_tray(dude)
+    if tray is None:  # no system tray on this test machine
+        dude.quit()
+        return
+    assert "Reload tuning" in [a.text() for a in tray.menu.actions()]
+    tray.hide()
+    dude.quit()

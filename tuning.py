@@ -6,7 +6,7 @@ the keys you want to change, e.g.:
 
     {"tuning": {"terror_every_calm_s": 90, "rage_tank": 0.75, "terror_weights": {"popup": 0.5}}}
 
-Restart the dude to pick it up. Unknown keys and non-numbers are skipped (and logged), so a typo never
+Pick it up with "Reload tuning" in the tray menu (or restart the dude). Unknown keys and non-numbers are skipped (and logged), so a typo never
 breaks him.
 """
 
@@ -40,6 +40,14 @@ class Tuning:
     rage_drones_three: float = 0.8  # war: three drones instead of two
     rage_tank: float = 0.65  # war: tank
     rage_air: float = 0.85  # war: airstrike
+
+    # ---- rage: how fast he cools down and how much each hit adds (desktop_dude.py)
+    rage_cooldown_per_s: float = 0.012  # rage drops this much per second
+    rage_punch: float = 0.12  # you punch him
+    rage_throw: float = 0.15  # you throw him ...
+    rage_throw_speed_bonus: float = 0.2  # ... plus up to this much for a full-speed throw
+    rage_parry: float = 0.05  # he blocks your punch with the katana
+    rage_rocket_jump: float = 0.1  # his own rocket blows up next to him
 
     # ---- terror: how often (on average one act per N seconds while idle) and the pause after one
     terror_first_delay_s: float = 25.0
@@ -133,3 +141,10 @@ def current() -> Tuning:
 
         _current = load(DATA / "dude_config.json", log)
     return _current
+
+
+def reload() -> Tuning:
+    """Forget the cached tuning and read dude_config.json again (tray menu: Reload tuning)."""
+    global _current
+    _current = None
+    return current()

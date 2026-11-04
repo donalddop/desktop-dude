@@ -90,3 +90,27 @@ def test_current_is_read_once(monkeypatch):
     monkeypatch.setattr(tuning, "_current", None)
     first = tuning.current()
     assert tuning.current() is first
+
+
+def test_rage_defaults_match_the_old_hardcoded_numbers():
+    t = Tuning()
+    assert t.rage_cooldown_per_s == 0.012
+    assert (t.rage_punch, t.rage_throw, t.rage_throw_speed_bonus) == (0.12, 0.15, 0.2)
+    assert (t.rage_parry, t.rage_rocket_jump) == (0.05, 0.1)
+
+
+def test_reload_reads_dude_config_again(monkeypatch, tmp_path):
+    import appdir
+
+    monkeypatch.setattr(appdir, "DATA", tmp_path)
+    monkeypatch.setattr(tuning, "_current", None)
+    cfg = tmp_path / "dude_config.json"
+    cfg.write_text(json.dumps({"tuning": {"rage_punch": 0.3}}), encoding="utf-8")
+    first = tuning.current()
+    assert first.rage_punch == 0.3
+    cfg.write_text(json.dumps({"tuning": {"rage_punch": 0.5}}), encoding="utf-8")
+    assert tuning.current() is first  # cached until a reload
+    again = tuning.reload()
+    assert again.rage_punch == 0.5
+    assert tuning.current() is again
+    monkeypatch.setattr(tuning, "_current", None)
