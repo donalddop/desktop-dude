@@ -8,7 +8,7 @@
 
 #define AppName "Desktop Dude"
 #ifndef AppVersion
-  #define AppVersion "1.4.0"
+  #define AppVersion "1.4.1"
 #endif
 #define AppPublisher "donalddop"
 #define AppUrl "https://github.com/donalddop/desktop-dude"

@@ -682,7 +682,8 @@ class Graffiti(FxWindow):
     """Spray piece on top of everything, high up on the screen (when there's no bare wallpaper to be had).
     Sticks until you click it."""
 
-    def __init__(self, x, y, piece=None):
+    def __init__(self, x, y, piece=None, auto=True):
+        self.auto = auto  # False: the dude sprays it on himself (vandal.py drives the progress)
         self.piece = piece or Piece(random.choice(("tag", "throwup", "throwup")), scale=0.8)
         self.W, self.H = self.piece.size()
         super().__init__(self.W, self.H, clickable=True)
@@ -694,8 +695,12 @@ class Graffiti(FxWindow):
         if e.button() == Qt.LeftButton and self.fading is None:
             self.fading = 0.0
 
+    def set_progress(self, k):
+        self.progress = k
+        self.update()
+
     def step(self, dt) -> bool:
-        if self.progress < 1.0:
+        if self.auto and self.progress < 1.0:
             self.progress = min(1.0, self.progress + dt / 1.3)
             self.update()
         if self.fading is not None:
@@ -1176,26 +1181,9 @@ class Terror:
         d.w32.bring_to_top(int(d.winId()))
 
     def _graffiti(self):
-        d, wd = self.d, self.d.world
-        vandal = getattr(d, "vandal", None)
-        if vandal is not None and not vandal.job and vandal.start_piece():
-            return True  # bare wallpaper in sight: it goes on the wall, behind your icons
-        if len(self.graffiti) >= 15:
-            return False
-        piece = Piece(random.choice(("tag", "throwup", "throwup")), scale=0.8)
-        w, h = piece.size()
-        s = wd.screen_at(d.x)
-        # high up, out of the way of where you type
-        x = random.uniform(s[0] + w / 2 + 20, s[2] - w / 2 - 20) if s[2] - s[0] > w + 40 else (s[0] + s[2]) / 2
-        lo = s[1] + h / 2 + 15
-        y = random.uniform(lo, max(lo, s[1] + (s[4] - s[1]) * 0.38))
-        self.graffiti.append(Graffiti(x, y, piece))
-        d.vx = 0.0
-        d.f = 1 if x >= d.x else -1
-        d.set_state("spray", 1.4)
-        self.sfx.play("spray")
-        self.later(1.5, lambda: self.say("graffiti"))
-        return True
+        """He goes there and sprays it himself (vandal.py): on bare wallpaper if he can find some, else high up."""
+        vandal = getattr(self.d, "vandal", None)
+        return bool(vandal is not None and vandal.start_spray())
 
     def _popup(self):
         g = self.screen_geom()

@@ -1076,7 +1076,7 @@ class Dude(QWidget):
         self.updater = Updater(real=isinstance(w32, Win32))
         self.aqua = None
         self.update_url = None
-        self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat}, real=isinstance(w32, Win32))
+        self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat, "pose_air": pose_air, "pose_spray": pose_spray}, real=isinstance(w32, Win32))
         self.aqua = Aquarium(self, self.life.kit, real=isinstance(w32, Win32))
         self.vandal = Vandal(self, self.life.kit)
         self.fx: list[tuple] = []
@@ -1624,7 +1624,7 @@ class Dude(QWidget):
     def physics(self, dt, now):
         if self.state == HELD:
             return
-        if self.state == TANKING or self.state in self.terror.FROZEN or self.state in self.life.FROZEN or self.state in self.aqua.FROZEN:
+        if self.state == TANKING or self.state in self.terror.FROZEN or self.state in self.life.FROZEN or self.state in self.aqua.FROZEN or self.state in self.vandal.FROZEN:
             return
         if self.state == CLIMB:
             self.y += self.vy * dt
@@ -1789,6 +1789,7 @@ class Dude(QWidget):
         draw_dude(qp, FX, FY - lift, self.pose, self.f, color)
         self.life.paint(qp, FX, FY - lift, self.pose, self.f)
         self.aqua.paint(qp, FX, FY - lift, self.pose, self.f)
+        self.vandal.paint(qp, FX, FY - lift, self.pose, self.f)
         if self.state == SLASH:
             self.draw_slash(qp)
         if self.state == "spray":

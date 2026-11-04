@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QWidget
 
 from arsenal import PopText
 from graffiti import Piece, text_path
-from terror import LINES, grab
+from terror import LINES, Graffiti, grab
 from warfare import FxWindow, _painter
 
 LINES.update({
@@ -35,7 +35,8 @@ LINES.update({
     "nicked": ["Hé! Mijn bal!", "Blijf van m'n bal af, sukkel"],
 })
 
-WALL_LIFE = 20 * 60.0  # graffiti on the wallpaper fades after 20 minutes
+WALL_LIFE = 20 * 60.0
+OVERLAY_LOW = 0.72  # on top of your windows he stays above this fraction of the screen: the bottom is where you type  # graffiti on the wallpaper fades after 20 minutes
 HOLE_LIFE, PATCH_LIFE = 80.0, 25.0
 G = 2200.0
 _rng = random.Random()  # its own dice: the rest of the dude's behaviour stays exactly as it was
@@ -66,16 +67,23 @@ class WallWidget(QWidget):
 
 
 class WallPiece(WallWidget):
-    """A graffiti piece on your wallpaper. Sprayed on, then it just sits there."""
+    """A graffiti piece on your wallpaper. Sprayed on (by him, live), then it just sits there."""
 
-    def __init__(self, w32, cx, cy, piece: Piece):
+    def __init__(self, w32, cx, cy, piece: Piece, auto=True):
         w, h = piece.size()
         super().__init__(w32, cx, cy, w, h)
-        self.piece = piece
+        self.piece, self.auto, self.progress = piece, auto, 0.0
+
+    def set_progress(self, k):
+        self.progress = k
+        self.update()
 
     def step(self, dt) -> bool:
         self.age += dt
-        if self.age < 2.2 or self.age > WALL_LIFE:
+        if self.auto and self.progress < 1.0:
+            self.progress = min(1.0, self.progress + dt / 1.8)
+            self.update()
+        if self.age > WALL_LIFE:
             self.update()
         if self.age > WALL_LIFE + 3.0:
             self.kill()
@@ -85,7 +93,7 @@ class WallPiece(WallWidget):
     def paintEvent(self, _):
         qp = _painter(self)
         fade = 1.0 - max(0.0, self.age - WALL_LIFE) / 3.0
-        self.piece.paint(qp, self.w_ / 2, self.h_ / 2, min(1.0, self.age / 1.8), fade)
+        self.piece.paint(qp, self.w_ / 2, self.h_ / 2, self.progress, fade)
 
 
 class WallHole(WallWidget):
@@ -238,7 +246,42 @@ class WallHole(WallWidget):
         qp.restore()
 
 
-# --------------------------------------------------------------------------- top-level helpers for football
+# --------------------------------------------------------------------------- top-level helpers
+class Dust(FxWindow):
+    """A cartoon dust cloud: puffs that swell and fade. Takeoff, landing, poof."""
+
+    LIFE = 0.55
+
+    def __init__(self, x, y, big=1.0):
+        self.s = int(170 * big)
+        super().__init__(self.s, self.s)
+        self.place_at(x, y)
+        self.age = 0.0
+        self.puffs = [(_rng.uniform(-1, 1), _rng.uniform(-0.6, 0.35), _rng.uniform(0.3, 0.55)) for _ in range(9)]
+        self.show()
+
+    def step(self, dt) -> bool:
+        self.age += dt
+        if self.age >= self.LIFE:
+            self.kill()
+            return False
+        self.update()
+        return True
+
+    def paintEvent(self, _):
+        qp = _painter(self)
+        k = self.age / self.LIFE
+        s = self.s
+        a = int(215 * (1 - k) ** 1.4)
+        qp.setPen(QPen(QColor(120, 105, 90, a), 1.5))
+        qp.setBrush(QColor(214, 200, 178, a))
+        spread = 0.25 + 0.75 * (1 - (1 - k) ** 3)
+        for dx, dy, r in self.puffs:
+            rad = s * 0.5 * r * (0.45 + 0.7 * spread)
+            qp.drawEllipse(QPointF(s / 2 + dx * s * 0.3 * spread, s * 0.62 + dy * s * 0.35 * spread), rad, rad * 0.8)
+
+
+
 class Patch(FxWindow):
     """Covers the real icon with your own wallpaper while its copy is out playing."""
 
@@ -308,9 +351,13 @@ class Vandal:
         self.cd = _rng.uniform(45, 90)
         self.enabled = True
         self.last_cur = None
+        self.land_watch = 0.0  # after a spray job: puff of dust when he lands
 
     @property
     def FROZEN(self):
+        j = self.job
+        if self.d.state == "vandal" and j.get("kind") == "spray" and j.get("phase") in ("fly", "spray"):
+            return ("vandal",)  # he's up in the air on his own steam, no gravity
         return ()
 
     # ---- where is there bare wallpaper?
@@ -343,10 +390,9 @@ class Vandal:
         x1, y1, x2, floor = s[0], s[1], s[2], s[4]
         if x2 - x1 < w + 20 or floor - y1 < h + 20:
             return None
-        for i in range(80):
-            top_bias = 0.55 if i < 50 else 1.0
+        for _ in range(80):
             cx = rng.uniform(x1 + w / 2 + 10, x2 - w / 2 - 10)
-            cy = rng.uniform(y1 + h / 2 + 10, y1 + h / 2 + 10 + (floor - y1 - h - 20) * top_bias)
+            cy = rng.uniform(y1 + h / 2 + 10, floor - h / 2 - 10)  # anywhere on bare wallpaper, high or low
             box = (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
             if self.free(*box) and not self.overlaps_wall(*box):
                 return cx, cy
@@ -357,7 +403,7 @@ class Vandal:
         d = self.d
         if kind not in self.KINDS or self.job or d.state in ("held", "ragdoll", "tanking", "binned", "aqua"):
             return False
-        if not self.wall_ok() and kind != "football":
+        if not self.wall_ok() and kind == "hole":
             return False
         ok = getattr(self, "start_" + kind)()
         if ok:
@@ -365,21 +411,41 @@ class Vandal:
         return ok
 
     def start_piece(self, piece: Piece | None = None) -> bool:
-        """Spray a piece on the wallpaper. Used by Terror's graffiti whenever there's bare wall to be had."""
-        if not self.wall_ok():
-            return False
+        return self.start_spray(piece)
+
+    def start_spray(self, piece: Piece | None = None) -> bool:
+        """He jumps up to the spot in a cloud of dust and sprays the piece on live, left to right, then drops.
+        On bare wallpaper if there's any (behind your icons), else on top of the screen, high up."""
         d = self.d
-        piece = piece or Piece(_rng.choice(("throwup", "piece", "piece", "tag")), scale=_rng.uniform(1.0, 1.45))
-        w, h = piece.size()
-        spot = self.spot_for(w, h)
-        if spot is None:
+        if self.job or d.state in ("held", "ragdoll", "tanking", "binned", "aqua", "climb"):
             return False
-        self.wall.append(WallPiece(d.w32, spot[0], spot[1], piece))
+        spot, on_wall = None, False
+        if self.wall_ok():
+            wp = piece or Piece(_rng.choice(("throwup", "piece", "piece", "tag")), scale=_rng.uniform(0.6, 1.8))
+            spot = self.spot_for(*wp.size())
+            if spot is not None:
+                piece, on_wall = wp, True
+        if spot is None:
+            if len(d.terror.graffiti) >= 15:
+                return False
+            piece = Piece(_rng.choice(("tag", "throwup", "throwup", "piece")), scale=_rng.uniform(0.5, 1.25))
+            w, h = piece.size()
+            s = d.world.screen_at(d.x)
+            # any height, but out of the bottom strip where you type
+            x = _rng.uniform(s[0] + w / 2 + 20, s[2] - w / 2 - 20) if s[2] - s[0] > w + 40 else (s[0] + s[2]) / 2
+            lo = s[1] + h / 2 + 15
+            spot = (x, _rng.uniform(lo, max(lo, s[1] + (s[4] - s[1]) * OVERLAY_LOW - h / 2)))
+        if on_wall:
+            widget = WallPiece(d.w32, spot[0], spot[1], piece, auto=False)
+            self.wall.append(widget)
+        else:
+            widget = Graffiti(spot[0], spot[1], piece, auto=False)
+            d.terror.graffiti.append(widget)
+        self.job = {"kind": "spray", "phase": "crouch", "t": 0.0, "piece": piece, "w": widget, "wall": on_wall,
+                    "cx": spot[0], "cy": spot[1]}
         d.vx = 0.0
         d.f = 1 if spot[0] >= d.x else -1
-        d.set_state("spray", 2.0)
-        d.terror.sfx.play("spray")
-        d.terror.later(2.1, lambda: d.terror.say("wallpiece"))
+        d.set_state("vandal", 99.0)
         return True
 
     def start_hole(self) -> bool:
@@ -458,7 +524,18 @@ class Vandal:
         self.cd -= dt
         self.wall = [w for w in self.wall if w.step(dt)]
         self.fx = [w for w in self.fx if not hasattr(w, "step") or w.step(dt)]
+        d = self.d
+        if self.land_watch > 0:
+            self.land_watch -= dt
+            if d.on_ground:
+                self.land_watch = 0.0
+                self.fx.append(Dust(d.x, d.y - 30, 0.75))
+                d.terror.sfx.play("bonk")
         j = self.job
+        if j.get("kind") == "spray" and d.state != "vandal":  # grabbed mid-spray: the paint finishes itself
+            j["w"].auto = True
+            self.job = {}
+            return
         if j.get("kind") == "football":
             self.ball_physics(dt, cur)
             if self.d.state != "vandal" and j.get("phase") != "home":  # he got grabbed / thrown: ball goes home
@@ -466,6 +543,67 @@ class Vandal:
         elif j and self.d.state != "vandal":
             self.job = {}
         self.last_cur = cur
+
+    # ---- spraying
+    SPRAY_POSE_T = 0.3
+
+    def hand_offset(self, pose):
+        d = self.d
+        hx, hy = d.limb("hand_a", pose)
+        return hx - d.x, hy - d.y
+
+    def spray_target(self, k, t):
+        """Where his hand goes: on the spray edge, swinging up and down over the letters."""
+        j = self.job
+        p = j["piece"]
+        lx = p.reveal_x(k)
+        ly = math.sin(t * 17) * p.half_h * 0.55
+        a = math.radians(p.angle)
+        return j["cx"] + lx * math.cos(a) - ly * math.sin(a), j["cy"] + lx * math.sin(a) + ly * math.cos(a)
+
+    def run_spray(self, dt, cur, btn):
+        d, j = self.d, self.job
+        j["t"] += dt
+        if j["phase"] == "crouch":
+            d.vx = 0.0
+            if j["t"] >= 0.16:
+                d.f = 1  # he sprays left to right
+                ox, oy = self.hand_offset(self.kit["pose_spray"](d.t))
+                tx, ty = self.spray_target(0.0, 0.0)
+                j.update(phase="fly", t=0.0, sx=d.x, sy=d.y, ex=tx - ox, ey=ty - oy)
+                self.fx.append(Dust(d.x, d.y - 25, 1.0))
+                d.on_ground, d.plat_hwnd, d.vx, d.vy = False, None, 0.0, 0.0
+                d.terror.sfx.play("yoink")
+            return
+        if j["phase"] == "fly":
+            k = min(1.0, j["t"] / 0.42)
+            e = k * k * (3 - 2 * k)
+            d.x = j["sx"] + (j["ex"] - j["sx"]) * e
+            d.y = j["sy"] + (j["ey"] - j["sy"]) * e - 150 * math.sin(math.pi * k)
+            d.f = 1 if j["ex"] >= j["sx"] else -1
+            if k >= 1.0:
+                j.update(phase="spray", t=0.0)
+                d.f = 1
+                d.terror.sfx.play("spray")
+            return
+        p = j["piece"]
+        dur = 1.0 + 0.3 * p.scale
+        k = min(1.0, j["t"] / dur)
+        j["w"].set_progress(k)
+        ox, oy = self.hand_offset(self.kit["pose_spray"](d.t))
+        tx, ty = self.spray_target(k, j["t"])
+        wd = d.world
+        d.x = min(max(tx - ox, wd.left + 10), wd.right - 10)
+        d.y = min(max(ty - oy, wd.top + 60), wd.bottom - 5)
+        d.vx = d.vy = 0.0
+        if k >= 1.0:
+            j["w"].set_progress(1.0)
+            self.fx.append(Dust(d.x, d.y - 50, 0.9))
+            d.terror.later(0.4, lambda: d.terror.say("wallpiece" if j["wall"] else "graffiti"))
+            self.job = {}
+            d.on_ground, d.vx, d.vy = False, 0.0, -220.0
+            d.set_state("idle", 1.0)
+            self.land_watch = 4.0
 
     # ---- the hole
     def run_hole(self, dt, cur, btn):
@@ -630,6 +768,12 @@ class Vandal:
         d, j = self.d, self.job
         if d.state != "vandal" or not j:
             return None
+        if j["kind"] == "spray":
+            if j["phase"] == "crouch":
+                return self.kit["pose_crouch"]()
+            if j["phase"] == "fly":
+                return self.kit["pose_air"](-600 if j["t"] < 0.21 else 300, d.t)
+            return self.kit["pose_spray"](d.t)
         if j["kind"] == "hole" and j["phase"] == "punch":
             return self.kit["pose_punch"](min(1.0, j["t"] / 0.3))
         if j["kind"] == "football" and j.get("kick") is not None:
@@ -637,7 +781,25 @@ class Vandal:
         return None
 
     def paint(self, qp, ox, oy, pose, f):
-        pass
+        """His spray can and the paint mist, in the colour of the piece."""
+        j = self.job
+        if self.d.state != "vandal" or j.get("kind") != "spray" or j.get("phase") != "spray":
+            return
+        hx, hy = self.kit["skeleton"](pose, f)["hand_a"]
+        hx, hy = ox + hx, oy + hy
+        qp.setPen(QPen(QColor(255, 255, 255, 190), 1.5))
+        qp.setBrush(QColor(200, 40, 60))
+        qp.drawRoundedRect(QRectF(hx - 4, hy - 9, 8, 15), 2, 2)
+        col = j["piece"].main_colour()
+        qp.setPen(Qt.NoPen)
+        t = self.d.t
+        for i in range(9):
+            k = (t * 4 + i / 9) % 1.0
+            c = QColor(col)
+            c.setAlpha(int(210 * (1 - k)))
+            qp.setBrush(c)
+            r = 2 + k * 7
+            qp.drawEllipse(QPointF(hx + f * (8 + k * 30), hy - 6 + math.sin(i * 7.1) * k * 16), r, r)
 
     # ---- lifecycle
     def set_visible(self, vis):
@@ -649,6 +811,8 @@ class Vandal:
         j = self.job
         if j.get("kind") == "football":
             self.end_football()
+        if j.get("kind") == "spray":
+            j["w"].auto = True  # the paint finishes itself
         for w in self.fx:
             w.kill()
         self.fx, self.job = [], {}

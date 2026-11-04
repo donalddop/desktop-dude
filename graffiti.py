@@ -166,6 +166,14 @@ class Piece:
         rad = math.radians(abs(self.angle))
         return int(w * math.cos(rad) + h * math.sin(rad)) + 10, int(h * math.cos(rad) + w * math.sin(rad)) + 10
 
+    def main_colour(self) -> QColor:
+        """The colour of the paint mist coming out of his can."""
+        return QColor(self.col) if self.style == "tag" else _c(self.pal[0])
+
+    def reveal_x(self, progress):
+        """Local x of the spray edge at a given progress (matches the clip in paint)."""
+        return -self.half_w - 60 + (2 * self.half_w + 160) * progress
+
     # ---- painting
     def paint(self, qp, cx, cy, progress=1.0, alpha=1.0):
         qp.save()
@@ -175,7 +183,7 @@ class Piece:
             qp.setOpacity(max(0.0, alpha))
         if progress < 1.0:  # sprayed on from left to right
             w, h = self.size()
-            reveal = -self.half_w - 60 + (2 * self.half_w + 160) * progress
+            reveal = self.reveal_x(progress)
             qp.setClipRect(QRectF(-w, -h, reveal + w, 2 * h))
         getattr(self, "_paint_" + self.style)(qp)
         qp.restore()

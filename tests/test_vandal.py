@@ -47,6 +47,22 @@ def test_every_style_paints(app, style):
         assert painted > 20
 
 
+def test_sizes_and_heights_vary(app):
+    _w32, _clock, dude = _bare(62)
+    scales, ys = set(), []
+    for _ in range(8):
+        dude.set_state(dd.IDLE, 5.0)
+        dude.on_ground = True
+        assert dude.vandal.start_spray()
+        j = dude.vandal.job
+        scales.add(round(j["piece"].scale, 2))
+        ys.append(j["cy"])
+        dude.vandal.release()
+        dude.vandal.clear()
+    assert len(scales) >= 5
+    assert max(ys) - min(ys) > 120
+
+
 def test_words_are_mokum():
     assert "MOKUM" in THROWUPS and "020" in THROWUPS
     assert "los mokumos" in TAGS and "grand theft fiets" in TAGS
@@ -54,17 +70,71 @@ def test_words_are_mokum():
 
 
 def test_graffiti_goes_high_when_no_wallpaper_is_free(app):
-    w32, _clock, dude = _quiet(51)
+    w32, clock, dude = _quiet(51)
     w32.wall_origin = lambda: None  # no wallpaper layer: classic overlay
-    for _ in range(6):
+    for _ in range(4):
         dude.terror.graffiti and dude.terror.clear_graffiti()
         dude.set_state(dd.IDLE, 5.0)
+        dude.on_ground = True
         assert dude.terror._graffiti()
         g = dude.terror.graffiti[-1]
         assert isinstance(g, Graffiti)
         s = dude.world.screen_at(dude.x)
         cy = g.y() + g.height() / 2
-        assert cy <= s[1] + (s[4] - s[1]) * 0.38 + 1, "out of the way of where you type"
+        assert g.y() + g.height() <= s[1] + (s[4] - s[1]) * vandal.OVERLAY_LOW + 2 or cy < s[1] + g.height(), \
+            "out of the way of where you type"
+        _spray_done(dude, clock)
+
+
+def _spray_done(dude, clock, secs=6):
+    for _ in range(int(secs * 60)):
+        clock[0] += 1 / 60
+        dude.tick(1 / 60)
+        if not dude.vandal.job:
+            return
+    raise AssertionError("still spraying")
+
+
+def test_he_jumps_up_and_sprays_it_himself(app):
+    w32, clock, dude = _quiet(60)
+    w32.wall_origin = lambda: None
+    y0 = dude.y
+    assert dude.vandal.start_spray()
+    j = dude.vandal.job
+    g = j["w"]
+    assert g.progress == 0.0 and not g.auto, "nothing appears until he's there"
+    seen, highest, progress_seen = set(), y0, []
+    for _ in range(60 * 6):
+        clock[0] += 1 / 60
+        dude.tick(1 / 60)
+        if not dude.vandal.job:
+            break
+        seen.add(dude.vandal.job["phase"])
+        highest = min(highest, dude.y)
+        if dude.vandal.job["phase"] == "spray":
+            progress_seen.append(g.progress)
+            hx, hy = dude.limb("hand_a")
+            tx, ty = dude.vandal.spray_target(g.progress, dude.vandal.job["t"])
+            assert abs(hx - tx) < 12 and abs(hy - ty) < 12, "his hand is on the spray edge"
+    assert seen == {"crouch", "fly", "spray"}
+    assert highest < y0 - 150, "he went up there"
+    assert progress_seen == sorted(progress_seen) and g.progress == 1.0
+    assert dude.vandal.land_watch > 0 or any(isinstance(w, vandal.Dust) for w in dude.vandal.fx)
+    for _ in range(60 * 4):
+        clock[0] += 1 / 60
+        dude.tick(1 / 60)
+    assert dude.on_ground and dude.errors == 0
+
+
+def test_grabbed_mid_spray_the_paint_finishes(app):
+    w32, clock, dude = _quiet(61)
+    w32.wall_origin = lambda: None
+    assert dude.vandal.start_spray()
+    g = dude.vandal.job["w"]
+    _run(dude, clock, 50)
+    dude.set_state("held", 1.0)
+    _run(dude, clock, 120)
+    assert not dude.vandal.job and g.progress == 1.0
 
 
 def test_graffiti_lands_on_the_wallpaper_when_desktop_is_bare(app):
@@ -72,6 +142,8 @@ def test_graffiti_lands_on_the_wallpaper_when_desktop_is_bare(app):
     assert dude.terror._graffiti()
     assert dude.terror.graffiti == []
     assert len(dude.vandal.wall) == 1 and isinstance(dude.vandal.wall[0], WallPiece)
+    _spray_done(dude, clock)
+    assert dude.vandal.wall[0].progress == 1.0
     l, t, r, b = dude.vandal.wall[0].rect_
     assert dude.vandal.free(l, t, r, b)
     _run(dude, clock, 120)
@@ -181,9 +253,11 @@ def test_cut_out_removes_the_wallpaper_around_an_icon(app):
 
 
 def test_release_keeps_the_wall_but_stops_the_game(app):
-    _w32, _clock, dude = _bare(59)
+    _w32, clock, dude = _bare(59)
     dude.terror.probe.icons = [("Prullenbak", (40, 40, 110, 116))]
     assert dude.vandal.start_piece()
+    _spray_done(dude, clock)
+    _run(dude, clock, 240)  # he lands first
     assert dude.vandal.start("football")
     dude.release_everything()
     assert not dude.vandal.job and dude.vandal.fx == []

@@ -1,0 +1,8 @@
+2026-11-04 18:15:37 terror: ears: capture error RuntimeError('Error 0x100000001')
+2026-11-04 21:35:26 selftest ok: OpenSSL 3.5.7 9 Jun 2026
+2026-11-04 21:38:41 started; layered window=True
+"DesktopDude.exe","25660","Console","1","144.408 K"
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{3B6F0D2E-7C41-4A8B-9E15-2F6A8C4D1E97}_is1
+    DisplayVersion    REG_SZ    1.4.0
+
