@@ -114,3 +114,19 @@ def test_reload_reads_dude_config_again(monkeypatch, tmp_path):
     assert again.rage_punch == 0.5
     assert tuning.current() is again
     monkeypatch.setattr(tuning, "_current", None)
+
+
+def test_move_numbers_match_the_old_hardcoded_formulas():
+    t = Tuning()
+    for rage in (0.0, 0.2, 0.5, 0.75, 1.0):
+        assert t.chase(rage) == 250 + 150 * rage
+        assert t.climb(rage) == 240 + 140 * rage
+        assert t.katana_cooldown(rage) == max(1.5, 4.5 - 3 * rage)
+        assert t.bazooka_cooldown(rage) == max(3.0, 8.0 - 4.0 * rage)
+
+
+def test_move_numbers_can_be_overridden():
+    t = from_dict({"chase_speed": 300, "katana_cooldown_min_s": 2.5, "bazooka_cooldown_per_rage": 6})
+    assert t.chase(0.0) == 300.0 and t.chase(1.0) == 450.0
+    assert t.katana_cooldown(1.0) == 2.5
+    assert t.bazooka_cooldown(0.5) == 5.0 and t.bazooka_cooldown(1.0) == 3.0

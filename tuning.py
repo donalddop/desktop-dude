@@ -49,6 +49,18 @@ class Tuning:
     rage_parry: float = 0.05  # he blocks your punch with the katana
     rage_rocket_jump: float = 0.1  # his own rocket blows up next to him
 
+    # ---- how rage drives his moves (desktop_dude.py): value = base + per_rage x rage, cooldowns floored
+    chase_speed: float = 250.0  # px/s running after your cursor ...
+    chase_speed_per_rage: float = 150.0  # ... plus this much at full rage
+    climb_speed: float = 240.0  # px/s up a window edge ...
+    climb_speed_per_rage: float = 140.0  # ... plus this much at full rage
+    katana_cooldown_s: float = 4.5  # wait between katana slashes ...
+    katana_cooldown_per_rage: float = 3.0  # ... minus this much at full rage ...
+    katana_cooldown_min_s: float = 1.5  # ... but never shorter than this
+    bazooka_cooldown_s: float = 8.0  # wait between bazooka shots ...
+    bazooka_cooldown_per_rage: float = 4.0  # ... minus this much at full rage ...
+    bazooka_cooldown_min_s: float = 3.0  # ... but never shorter than this
+
     # ---- terror: how often (on average one act per N seconds while idle) and the pause after one
     terror_first_delay_s: float = 25.0
     terror_every_calm_s: float = 45.0
@@ -68,6 +80,20 @@ class Tuning:
     drones_cooldown_s: float = 45.0
     tank_cooldown_s: float = 75.0
     air_cooldown_s: float = 60.0
+
+    def chase(self, rage: float) -> float:
+        return self.chase_speed + self.chase_speed_per_rage * rage
+
+    def climb(self, rage: float) -> float:
+        return self.climb_speed + self.climb_speed_per_rage * rage
+
+    def katana_cooldown(self, rage: float) -> float:
+        return max(self.katana_cooldown_min_s, self.katana_cooldown_s - self.katana_cooldown_per_rage * rage)
+
+    def bazooka_cooldown(self, rage: float) -> float:
+        return max(
+            self.bazooka_cooldown_min_s, self.bazooka_cooldown_s - self.bazooka_cooldown_per_rage * rage
+        )
 
 
 def _number(v) -> bool:

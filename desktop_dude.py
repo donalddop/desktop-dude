@@ -1310,7 +1310,7 @@ class Dude(QWidget):
         elif s == CHASE:
             self.f = 1 if dx >= 0 else -1
             if abs(dx) > 14:
-                self.walk(math.copysign(250 + 150 * self.rage, dx))
+                self.walk(math.copysign(self.tune.chase(self.rage), dx))
             else:
                 self.vx = 0.0
             in_reach = abs(dx) < 55 and -85 < rel_y < 10
@@ -1385,11 +1385,11 @@ class Dude(QWidget):
                 self.terror.sfx.play("slash")
                 self.slash_hit(cur, btn)
             if self.st > self.state_len:
-                self.katana_cd = max(1.5, 4.5 - 3 * self.rage)
+                self.katana_cd = self.tune.katana_cooldown(self.rage)
                 self.after_attack()
         elif s == CLIMB:
             self.vx, self.x = 0.0, self.climb_x
-            self.vy = -(240 + 140 * self.rage)
+            self.vy = -self.tune.climb(self.rage)
             if self.y <= self.climb_top:
                 self.y = self.climb_top
                 if self.climb_hwnd:  # vault over the edge onto the window
@@ -1569,7 +1569,7 @@ class Dude(QWidget):
         self.add_fx(mx, my, "flash")
         self.terror.sfx.play("fire")
         self.vx = -self.f * 180.0
-        self.bazooka_cd = max(3.0, 8.0 - 4.0 * self.rage)
+        self.bazooka_cd = self.tune.bazooka_cooldown(self.rage)
 
     def explode(self, x, y, hurt_cursor=True):
         self.war.on_explosion(x, y)
