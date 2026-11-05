@@ -120,10 +120,12 @@ def test_he_jumps_up_and_sprays_it_himself(app):
     assert highest < y0 - 150, "he went up there"
     assert progress_seen == sorted(progress_seen) and g.progress == 1.0
     assert dude.vandal.land_watch > 0 or any(isinstance(w, vandal.Dust) for w in dude.vandal.fx)
+    landed = False
     for _ in range(60 * 4):
         clock[0] += 1 / 60
         dude.tick(1 / 60)
-    assert dude.on_ground and dude.errors == 0
+        landed = landed or dude.on_ground
+    assert landed and dude.vandal.land_watch == 0 and dude.errors == 0, "lands, with a puff of dust"
 
 
 def test_grabbed_mid_spray_the_paint_finishes(app):

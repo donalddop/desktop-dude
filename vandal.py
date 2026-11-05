@@ -15,12 +15,13 @@ from __future__ import annotations
 import math
 import random
 
-from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPainterPath, QPen, QPixmap, QPolygonF, QRadialGradient
+from PySide6.QtCore import QPointF, QRectF, Qt, QTimer
+from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPixmap, QPolygonF, QRadialGradient
 from PySide6.QtWidgets import QWidget
 
 from arsenal import PopText
-from graffiti import Piece, text_path
+from graffiti import Piece, paint_cached, render, text_path
+from renderer import Renderer
 from terror import LINES, Graffiti, grab
 from warfare import FxWindow, _painter
 
@@ -72,7 +73,11 @@ class WallPiece(WallWidget):
     def __init__(self, w32, cx, cy, piece: Piece, auto=True):
         w, h = piece.size()
         super().__init__(w32, cx, cy, w, h)
-        self.piece, self.auto, self.progress = piece, auto, 0.0
+        self.piece, self.auto, self.progress, self.img = piece, auto, 0.0, None
+
+    def set_image(self, img):
+        self.img = img
+        self.update()
 
     def set_progress(self, k):
         self.progress = k
@@ -91,9 +96,10 @@ class WallPiece(WallWidget):
         return True
 
     def paintEvent(self, _):
-        qp = _painter(self)
+        if self.img is None and (self.auto or self.progress >= 1.0):
+            self.img = render(self.piece)  # nobody pre-rendered it: do it now (once)
         fade = 1.0 - max(0.0, self.age - WALL_LIFE) / 3.0
-        self.piece.paint(qp, self.w_ / 2, self.h_ / 2, self.progress, fade)
+        paint_cached(QPainter(self), self.w_, self.h_, self.piece, self.img, self.progress, fade)
 
 
 class WallHole(WallWidget):
@@ -134,6 +140,23 @@ class WallHole(WallWidget):
         self.rat_next, self.rat_up, self.rat_k = rng.uniform(1.0, 2.0), False, 0.0
         self.blink = 0.0
         self.tape = rng.uniform(-0.3, 0.3)
+        self.wall_img = self.draw_bricks()
+
+    def draw_bricks(self):
+        img = QImage(self.W, self.H, QImage.Format_ARGB32_Premultiplied)
+        img.fill(QColor(52, 34, 28))
+        qp = QPainter(img)
+        bw, bh = 34, 15
+        i = 0
+        for row in range(self.H // bh + 1):
+            off = (row % 2) * bw / 2
+            for col in range(-1, self.W // bw + 1):
+                jr, jg = self.bricks[i % len(self.bricks)]
+                i += 1
+                qp.fillRect(QRectF(col * bw + off + 1.5, row * bh + 1.5, bw - 3, bh - 3),
+                            QColor(150 + jr, 68 + jg, 48 + jg))
+        qp.end()
+        return img
 
     @property
     def patched(self):
@@ -144,13 +167,15 @@ class WallHole(WallWidget):
         if self.age >= HOLE_LIFE + PATCH_LIFE:
             self.kill()
             return False
+        before = (self.rat_k, self.blink > 0)
         if not self.patched:
             if self.age >= self.rat_next:
                 self.rat_up = not self.rat_up
                 self.rat_next = self.age + (_rng.uniform(2.0, 4.5) if self.rat_up else _rng.uniform(3, 7))
             self.rat_k = min(1.0, self.rat_k + dt * 3) if self.rat_up else max(0.0, self.rat_k - dt * 4)
             self.blink = 0.15 if _rng.random() < dt * 0.6 else max(0.0, self.blink - dt)
-        self.update()
+        if self.patched or self.age < 0.1 or (self.rat_k, self.blink > 0) != before:
+            self.update()  # only repaint when the rat moves or the patch fades
         return True
 
     def paintEvent(self, _):
@@ -167,16 +192,7 @@ class WallHole(WallWidget):
         # behind the wallpaper: an old brick wall
         qp.save()
         qp.setClipPath(hole)
-        qp.fillRect(self.rect(), QColor(52, 34, 28))
-        bw, bh = 34, 15
-        i = 0
-        for row in range(self.H // bh + 1):
-            off = (row % 2) * bw / 2
-            for col in range(-1, self.W // bw + 1):
-                jr, jg = self.bricks[i % len(self.bricks)]
-                i += 1
-                qp.fillRect(QRectF(col * bw + off + 1.5, row * bh + 1.5, bw - 3, bh - 3),
-                            QColor(150 + jr, 68 + jg, 48 + jg))
+        qp.drawImage(0, 0, self.wall_img)
         if not self.patched:
             self.paint_rat(qp)
         g = QRadialGradient(QPointF(self.W / 2, self.H / 2), 70)
@@ -343,8 +359,11 @@ def cut_out(icon: QImage, wall: QImage | None) -> QImage:
 class Vandal:
     KINDS = ("piece", "hole", "football")
 
-    def __init__(self, dude, kit):
+    def __init__(self, dude, kit, real=False):
         self.d, self.kit = dude, kit
+        self.renderer = Renderer(real)
+        if real:
+            QTimer.singleShot(3000, self.warm_up)
         self.wall: list = []  # pieces and holes on the wallpaper layer
         self.fx: list = []  # ball, patch, pop texts (top-level)
         self.job: dict = {}
@@ -352,6 +371,11 @@ class Vandal:
         self.enabled = True
         self.last_cur = None
         self.land_watch = 0.0  # after a spray job: puff of dust when he lands
+
+    def warm_up(self):
+        """Load the fonts and start the graffiti helper now, not in the middle of his first spray."""
+        Piece("tag", scale=0.5)
+        self.renderer.start()
 
     @property
     def FROZEN(self):
@@ -421,10 +445,14 @@ class Vandal:
             return False
         spot, on_wall = None, False
         if self.wall_ok():
-            wp = piece or Piece(_rng.choice(("throwup", "piece", "piece", "tag")), scale=_rng.uniform(0.6, 1.8))
-            spot = self.spot_for(*wp.size())
-            if spot is not None:
-                piece, on_wall = wp, True
+            style = _rng.choice(("throwup", "piece", "piece", "tag"))
+            scale = _rng.uniform(0.6, 1.8)
+            tries = [piece] if piece is not None else [Piece(style, scale=s) for s in (scale, scale * 0.7, 0.6)]
+            for wp in tries:  # too big for the bare bit of wallpaper? try it smaller first
+                spot = self.spot_for(*wp.size())
+                if spot is not None:
+                    piece, on_wall = wp, True
+                    break
         if spot is None:
             if len(d.terror.graffiti) >= 15:
                 return False
@@ -442,7 +470,7 @@ class Vandal:
             widget = Graffiti(spot[0], spot[1], piece, auto=False)
             d.terror.graffiti.append(widget)
         self.job = {"kind": "spray", "phase": "crouch", "t": 0.0, "piece": piece, "w": widget, "wall": on_wall,
-                    "cx": spot[0], "cy": spot[1]}
+                    "cx": spot[0], "cy": spot[1], "ticket": self.renderer.request(piece), "wait": 0.0}
         d.vx = 0.0
         d.f = 1 if spot[0] >= d.x else -1
         d.set_state("vandal", 99.0)
@@ -587,6 +615,16 @@ class Vandal:
                 d.terror.sfx.play("spray")
             return
         p = j["piece"]
+        if j["w"].img is None:  # the helper is still painting it: hover, shake the can
+            img = self.renderer.poll(j["ticket"])
+            j["wait"] += dt
+            if img is None and (j["ticket"] is None or j["wait"] > 2.5):
+                img = render(p)  # no helper (or it's stuck): draw it here, once
+            if img is None:
+                j["t"] = 0.0
+                d.vx = d.vy = 0.0
+                return
+            j["w"].set_image(img)
         dur = 1.0 + 0.3 * p.scale
         k = min(1.0, j["t"] / dur)
         j["w"].set_progress(k)
@@ -818,6 +856,9 @@ class Vandal:
         self.fx, self.job = [], {}
         if self.d.state == "vandal":
             self.d.set_state("idle", 1.0)
+
+    def stop(self):
+        self.renderer.stop()
 
     def clear(self):
         """Tray > Clear graffiti: the wallpaper goes back to normal."""

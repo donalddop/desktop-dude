@@ -23,6 +23,7 @@ from PySide6.QtGui import (
     QFont,
     QFontMetrics,
     QGuiApplication,
+    QPainter,
     QPainterPath,
     QPen,
     QPixmap,
@@ -32,7 +33,7 @@ from PySide6.QtGui import (
 
 import tuning
 from appdir import DATA
-from graffiti import Piece
+from graffiti import Piece, paint_cached, render
 from warfare import Blast, FxWindow, _painter
 
 LOG = DATA / "desktop_dude.log"
@@ -688,8 +689,12 @@ class Graffiti(FxWindow):
         self.W, self.H = self.piece.size()
         super().__init__(self.W, self.H, clickable=True)
         self.place_at(x, y)
-        self.progress, self.fading = 0.0, None
+        self.progress, self.fading, self.img = 0.0, None, None
         self.show()
+
+    def set_image(self, img):
+        self.img = img
+        self.update()
 
     def mousePressEvent(self, e):
         if e.button() == Qt.LeftButton and self.fading is None:
@@ -712,7 +717,10 @@ class Graffiti(FxWindow):
         return True
 
     def paintEvent(self, _):
-        self.piece.paint(_painter(self), self.W / 2, self.H / 2, self.progress)
+        if self.img is None and (self.auto or self.progress >= 1.0):
+            self.img = render(self.piece)  # nobody pre-rendered it: do it now (once)
+        paint_cached(QPainter(self), self.W, self.H, self.piece, self.img, self.progress)
+
 
 class Bubble(FxWindow):
     """Speech bubble above his head. Big and readable, wraps long lines."""

@@ -360,6 +360,7 @@ def test_explosions_wreck_flak_and_mines_launch_the_dude(app):
 
 def test_terror_effects_run_and_clean_up(app):
     w32, clock, dude = _make(31)
+    w32.wall_origin = lambda: None  # graffiti on top of the screen, not on the wallpaper
     _run(dude, clock, 120)
     t = dude.terror
     t.enabled = False
@@ -374,7 +375,8 @@ def test_terror_effects_run_and_clean_up(app):
 
 
 def test_graffiti_sticks_until_clicked(app):
-    _w32, clock, dude = _make(32)
+    w32, clock, dude = _make(32)
+    w32.wall_origin = lambda: None  # graffiti on top of the screen, not on the wallpaper
     _run(dude, clock, 60)
     t = dude.terror
     t.enabled = False

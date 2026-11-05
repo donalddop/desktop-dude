@@ -20,7 +20,9 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QFontDatabase,
+    QImage,
     QLinearGradient,
+    QPainter,
     QPainterPath,
     QPen,
     QPolygonF,
@@ -127,8 +129,13 @@ def _drips(rng, path: QPainterPath, n, maxlen):
 class Piece:
     """One graffiti piece. Coordinates: centred on (0, 0); size() is the box it needs."""
 
-    def __init__(self, style: str | None = None, text: str | None = None, scale: float = 1.0, rng=None):
-        rng = rng or random
+    def __init__(self, style: str | None = None, text: str | None = None, scale: float = 1.0, rng=None,
+                 seed: int | None = None):
+        if rng is None:  # seeded: the graffiti helper process can rebuild exactly this piece
+            seed = random.randrange(2**31) if seed is None else seed
+            rng = random.Random(seed)
+        self.seed = seed if rng is not None and seed is not None else None
+        self.spec = (style, text, scale, self.seed)
         self.style = style or rng.choice(("tag", "throwup", "throwup", "piece"))
         self.scale = scale
         self.angle = rng.uniform(-9, 5)
@@ -326,3 +333,26 @@ class Piece:
             qp.setBrush(col)
             qp.drawPolygon(QPolygonF([tip + QPointF(8 * s, -6 * s), tip + QPointF(-14 * s, -6 * s),
                                       tip + QPointF(2 * s, 14 * s)]))
+
+
+def render(piece: Piece) -> QImage:
+    """The finished piece as an image (expensive: do it once, ideally in the helper process)."""
+    w, h = piece.size()
+    img = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    qp = QPainter(img)
+    qp.setRenderHint(QPainter.Antialiasing)
+    piece.paint(qp, w / 2, h / 2)
+    qp.end()
+    return img
+
+
+def paint_cached(qp, w, h, piece: Piece, img: QImage | None, progress=1.0, alpha=1.0):
+    """Reveal a pre-rendered piece up to the spray edge: an image blit, about a millisecond."""
+    if img is None or progress <= 0:
+        return
+    if alpha < 1.0:
+        qp.setOpacity(max(0.0, alpha))
+    if progress < 1.0:
+        qp.setClipRect(QRectF(0, 0, max(0.0, w / 2 + piece.reveal_x(progress)), h))
+    qp.drawImage(0, 0, img)

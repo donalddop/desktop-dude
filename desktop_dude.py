@@ -1078,7 +1078,7 @@ class Dude(QWidget):
         self.update_url = None
         self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat, "pose_air": pose_air, "pose_spray": pose_spray}, real=isinstance(w32, Win32))
         self.aqua = Aquarium(self, self.life.kit, real=isinstance(w32, Win32))
-        self.vandal = Vandal(self, self.life.kit)
+        self.vandal = Vandal(self, self.life.kit, real=isinstance(w32, Win32))
         self.fx: list[tuple] = []
         self.errors = 0
         self.tray = None
@@ -2255,6 +2255,18 @@ def selftest() -> int:
             import graffiti
 
             assert (graffiti.BASE / "assets" / "fonts" / graffiti.FONT_FILES["bubble"]).exists(), "fonts"
+            # the graffiti helper process must start from the exe too (multiprocessing + freeze_support)
+            from renderer import Renderer
+
+            _app = QApplication.instance() or QApplication([])
+            r = Renderer(True)
+            r.start()
+            jid, img, t0 = r.request(graffiti.Piece("tag", scale=0.5, seed=1)), None, time.time()
+            while img is None and time.time() - t0 < 25:
+                img = r.poll(jid)
+                time.sleep(0.05)
+            r.stop()
+            assert img is not None and not img.isNull(), "graffiti helper"
         log(f"selftest ok: {ssl.OPENSSL_VERSION}")
         return 0
     except Exception as e:  # noqa: BLE001
@@ -2263,6 +2275,9 @@ def selftest() -> int:
 
 
 def main():
+    import multiprocessing
+
+    multiprocessing.freeze_support()  # the exe is also the graffiti helper process (renderer.py)
     if "--selftest" in sys.argv:
         sys.exit(selftest())
     if IS_WIN:
