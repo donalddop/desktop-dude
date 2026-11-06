@@ -1317,7 +1317,7 @@ class Dude(QWidget):
             if self.can_slash(dt, dx, rel_y, btn):
                 self.start_slash(cur)
             elif in_reach and not btn and self.attack_cd <= 0:
-                if self.on_ground and random.random() < 0.3 + 0.3 * self.rage:
+                if self.on_ground and random.random() < self.tune.grab(self.rage):
                     self.set_state(GRAB, 2.6)
                     self.struggle, self.grab_last, self.grab_dir = 0.0, None, -self.f
                 else:
@@ -1467,7 +1467,7 @@ class Dude(QWidget):
 
     def can_slash(self, dt, dx, rel_y, btn):
         return (
-            self.rage >= 0.2 and self.katana_cd <= 0 and self.attack_cd <= 0 and self.on_ground
+            self.rage >= self.tune.rage_katana and self.katana_cd <= 0 and self.attack_cd <= 0 and self.on_ground
             and not btn and 40 < abs(dx) < 280 and -150 < rel_y < 30 and random.random() < 4 * dt
         )
 
@@ -1484,7 +1484,7 @@ class Dude(QWidget):
         hit = False
         dx, dy = cur[0] - sx, cur[1] - sy
         if not btn and -15 < dx * self.f < 130 and -120 < dy < 90:
-            push = 160 + 140 * self.rage
+            push = self.tune.slash(self.rage)
             self.start_shove(cur, (cur[0] + math.cos(ang) * push, cur[1] + math.sin(ang) * push))
             self.add_mark(Slash(cur[0], cur[1], ang))
             self.add_fx(cur[0], cur[1], "pow")
@@ -1544,7 +1544,7 @@ class Dude(QWidget):
         self.wander_speed = random.choice((120.0, 140.0, 230.0))
 
     def maybe_bazooka(self, dt, dist, btn):
-        if self.rage < 0.3 or self.bazooka_cd > 0 or not self.on_ground or btn or not 220 < dist < 1100:
+        if self.rage < self.tune.rage_bazooka or self.bazooka_cd > 0 or not self.on_ground or btn or not 220 < dist < 1100:
             return False
         if random.random() >= (0.15 + 0.6 * self.rage) * dt:
             return False
@@ -1565,7 +1565,7 @@ class Dude(QWidget):
     def fire(self, cur):
         (mx, my), (ux, uy) = self.muzzle()
         reach = max(60.0, math.hypot(cur[0] - mx, cur[1] - my))
-        self.rockets.append(Rocket(mx, my, ux, uy, 900 + 400 * self.rage, reach))
+        self.rockets.append(Rocket(mx, my, ux, uy, self.tune.rocket(self.rage), reach))
         self.add_fx(mx, my, "flash")
         self.terror.sfx.play("fire")
         self.vx = -self.f * 180.0

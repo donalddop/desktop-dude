@@ -130,3 +130,19 @@ def test_move_numbers_can_be_overridden():
     assert t.chase(0.0) == 300.0 and t.chase(1.0) == 450.0
     assert t.katana_cooldown(1.0) == 2.5
     assert t.bazooka_cooldown(0.5) == 5.0 and t.bazooka_cooldown(1.0) == 3.0
+
+
+def test_attack_numbers_match_the_old_hardcoded_formulas():
+    t = Tuning()
+    for rage in (0.0, 0.2, 0.5, 0.75, 1.0):
+        assert t.slash(rage) == 160 + 140 * rage
+        assert t.grab(rage) == 0.3 + 0.3 * rage
+        assert t.rocket(rage) == 900 + 400 * rage
+    assert (t.rage_katana, t.rage_bazooka) == (0.2, 0.3)
+
+
+def test_attack_numbers_can_be_overridden():
+    t = from_dict({"rocket_speed": 600, "grab_chance_per_rage": 0, "rage_bazooka": 0.5})
+    assert t.rocket(0.0) == 600.0 and t.rocket(1.0) == 1000.0
+    assert t.grab(1.0) == 0.3
+    assert t.rage_bazooka == 0.5 and t.rage_katana == 0.2

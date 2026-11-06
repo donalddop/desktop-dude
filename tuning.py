@@ -60,6 +60,14 @@ class Tuning:
     bazooka_cooldown_s: float = 8.0  # wait between bazooka shots ...
     bazooka_cooldown_per_rage: float = 4.0  # ... minus this much at full rage ...
     bazooka_cooldown_min_s: float = 3.0  # ... but never shorter than this
+    slash_push: float = 160.0  # px a katana hit shoves your cursor ...
+    slash_push_per_rage: float = 140.0  # ... plus this much at full rage
+    grab_chance: float = 0.3  # chance he grabs your cursor when in reach ...
+    grab_chance_per_rage: float = 0.3  # ... plus this much at full rage
+    rocket_speed: float = 900.0  # px/s of a bazooka rocket ...
+    rocket_speed_per_rage: float = 400.0  # ... plus this much at full rage
+    rage_katana: float = 0.2  # from this rage he slashes with the katana
+    rage_bazooka: float = 0.3  # from this rage he pulls the bazooka
 
     # ---- terror: how often (on average one act per N seconds while idle) and the pause after one
     terror_first_delay_s: float = 25.0
@@ -89,6 +97,15 @@ class Tuning:
 
     def katana_cooldown(self, rage: float) -> float:
         return max(self.katana_cooldown_min_s, self.katana_cooldown_s - self.katana_cooldown_per_rage * rage)
+
+    def slash(self, rage: float) -> float:
+        return self.slash_push + self.slash_push_per_rage * rage
+
+    def grab(self, rage: float) -> float:
+        return self.grab_chance + self.grab_chance_per_rage * rage
+
+    def rocket(self, rage: float) -> float:
+        return self.rocket_speed + self.rocket_speed_per_rage * rage
 
     def bazooka_cooldown(self, rage: float) -> float:
         return max(
