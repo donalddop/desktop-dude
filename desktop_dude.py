@@ -1416,7 +1416,8 @@ class Dude(QWidget):
         elif s == TAUNT:
             self.vx = 0.0
             if self.st > self.state_len:
-                self.set_state(CHASE if self.rage > 0.3 else IDLE, 4.0 if self.rage > 0.3 else 1.5)
+                chase = self.rage > self.tune.rage_chase_after_taunt
+                self.set_state(CHASE if chase else IDLE, 4.0 if chase else 1.5)
         elif s == RAGDOLL:
             self.spin += self.spin_v * dt
             if self.on_ground and abs(self.vx) < 60 and self.st > 0.3:
@@ -1425,7 +1426,7 @@ class Dude(QWidget):
         elif s == GETUP:
             self.vx = 0.0
             if self.st > self.state_len:
-                if self.rage > 0.35:
+                if self.rage > self.tune.rage_getup_notice:
                     self.set_state(NOTICE)
                     self.add_fx(self.x, self.y - 110, "!")
                 else:
@@ -1597,9 +1598,9 @@ class Dude(QWidget):
             self.life.dude_hit("boom")
 
     def maybe_kick(self, dt):
-        if self.rage < 0.3 or self.attack_cd > 0 or not self.on_ground:
+        if self.rage < self.tune.rage_kick or self.attack_cd > 0 or not self.on_ground:
             return
-        if random.random() > 0.3 * self.rage * dt:
+        if random.random() > self.tune.kick_chance(self.rage, dt):
             return
         tgt = self.plat_hwnd
         if not tgt:

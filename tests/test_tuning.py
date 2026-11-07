@@ -146,3 +146,17 @@ def test_attack_numbers_can_be_overridden():
     assert t.rocket(0.0) == 600.0 and t.rocket(1.0) == 1000.0
     assert t.grab(1.0) == 0.3
     assert t.rage_bazooka == 0.5 and t.rage_katana == 0.2
+
+
+def test_behaviour_thresholds_match_the_old_hardcoded_numbers():
+    t = Tuning()
+    assert (t.rage_chase_after_taunt, t.rage_getup_notice, t.rage_kick) == (0.3, 0.35, 0.3)
+    for rage in (0.0, 0.3, 0.5, 1.0):
+        for dt in (0.016, 0.1, 1.0):
+            assert t.kick_chance(rage, dt) == 0.3 * rage * dt
+
+
+def test_behaviour_thresholds_can_be_overridden():
+    t = from_dict({"rage_kick": 0.6, "kick_chance_per_rage_s": 0.0, "rage_getup_notice": 0.1})
+    assert t.rage_kick == 0.6 and t.kick_chance(1.0, 1.0) == 0.0
+    assert t.rage_getup_notice == 0.1 and t.rage_chase_after_taunt == 0.3

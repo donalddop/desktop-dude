@@ -68,6 +68,10 @@ class Tuning:
     rocket_speed_per_rage: float = 400.0  # ... plus this much at full rage
     rage_katana: float = 0.2  # from this rage he slashes with the katana
     rage_bazooka: float = 0.3  # from this rage he pulls the bazooka
+    rage_chase_after_taunt: float = 0.3  # after a taunt he runs after you (instead of idling) above this rage
+    rage_getup_notice: float = 0.35  # getting up after a throw: above this rage he spots you ('!')
+    rage_kick: float = 0.3  # from this rage he kicks the window he stands on / bumps into ...
+    kick_chance_per_rage_s: float = 0.3  # ... with this chance per second x rage
 
     # ---- terror: how often (on average one act per N seconds while idle) and the pause after one
     terror_first_delay_s: float = 25.0
@@ -106,6 +110,9 @@ class Tuning:
 
     def rocket(self, rage: float) -> float:
         return self.rocket_speed + self.rocket_speed_per_rage * rage
+
+    def kick_chance(self, rage: float, dt: float) -> float:
+        return self.kick_chance_per_rage_s * rage * dt
 
     def bazooka_cooldown(self, rage: float) -> float:
         return max(
