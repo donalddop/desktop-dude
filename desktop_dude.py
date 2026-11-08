@@ -1608,14 +1608,18 @@ class Dude(QWidget):
             tgt = w.hwnd if w else None
         if tgt:
             self.kick_target = tgt
-            if self.rage > 0.5 and self.katana_cd <= 0 and random.random() < 0.5:
+            if (
+                self.rage > self.tune.rage_window_katana
+                and self.katana_cd <= 0
+                and random.random() < self.tune.window_katana_chance
+            ):
                 self.lunge_v = 0.0
                 self.set_state(SLASH, 0.6)
             else:
                 self.set_state(KICK, 0.45)
 
     def after_attack(self):
-        self.attack_cd = max(0.8, 2.8 - 1.8 * self.rage)
+        self.attack_cd = self.tune.attack_pause(self.rage)
         if random.random() < self.rage:
             self.set_state(CHASE, 5.0)
         else:
@@ -1912,7 +1916,9 @@ class Dude(QWidget):
         """Katana block: always mid-swing, sometimes when he's angry."""
         if not self.on_ground or self.state in (RAGDOLL, GETUP, STUNNED, HELD, CLIMB):
             return False
-        if self.state != SLASH and (self.rage < 0.3 or random.random() > 0.35):
+        if self.state != SLASH and (
+            self.rage < self.tune.rage_parry_anytime or random.random() > self.tune.parry_chance
+        ):
             return False
         self.add_fx(g.x(), g.y(), "clang")
         self.terror.sfx.play("clang")

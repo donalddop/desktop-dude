@@ -160,3 +160,18 @@ def test_behaviour_thresholds_can_be_overridden():
     t = from_dict({"rage_kick": 0.6, "kick_chance_per_rage_s": 0.0, "rage_getup_notice": 0.1})
     assert t.rage_kick == 0.6 and t.kick_chance(1.0, 1.0) == 0.0
     assert t.rage_getup_notice == 0.1 and t.rage_chase_after_taunt == 0.3
+
+
+def test_window_attack_and_parry_numbers_match_the_old_hardcoded_formulas():
+    t = Tuning()
+    assert (t.rage_window_katana, t.window_katana_chance) == (0.5, 0.5)
+    assert (t.rage_parry_anytime, t.parry_chance) == (0.3, 0.35)
+    for rage in (0.0, 0.2, 0.5, 0.9, 1.0):
+        assert t.attack_pause(rage) == max(0.8, 2.8 - 1.8 * rage)
+
+
+def test_window_attack_and_parry_numbers_can_be_overridden():
+    t = from_dict({"parry_chance": 0.0, "attack_pause_s": 5.0, "attack_pause_min_s": 2.0})
+    assert t.parry_chance == 0.0 and t.rage_parry_anytime == 0.3
+    assert t.attack_pause(0.0) == 5.0 and t.attack_pause(1.0) == 3.2
+    assert from_dict({"attack_pause_per_rage": 10.0}).attack_pause(1.0) == 0.8
