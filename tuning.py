@@ -79,6 +79,14 @@ class Tuning:
     attack_pause_s: float = 2.8  # pause after a kick/slash on a window ...
     attack_pause_per_rage: float = 1.8  # ... minus this much at full rage ...
     attack_pause_min_s: float = 0.8  # ... but never shorter than this
+    punch_push: float = 90.0  # px his punch shoves your cursor ...
+    punch_push_per_rage: float = 120.0  # ... plus this much at full rage
+    crack_chance: float = 0.4  # chance a punch on your cursor cracks the screen ...
+    crack_chance_per_rage: float = 0.6  # ... plus this much at full rage
+    notice_per_s: float = 0.2  # chance per second he notices you within reach (450 px) ...
+    notice_per_s_per_rage: float = 1.3  # ... plus this much at full rage
+    bazooka_fire_per_s: float = 0.15  # chance per second he fires the bazooka when in range ...
+    bazooka_fire_per_s_per_rage: float = 0.6  # ... plus this much at full rage
 
     # ---- terror: how often (on average one act per N seconds while idle) and the pause after one
     terror_first_delay_s: float = 25.0
@@ -120,6 +128,18 @@ class Tuning:
 
     def kick_chance(self, rage: float, dt: float) -> float:
         return self.kick_chance_per_rage_s * rage * dt
+
+    def punch(self, rage: float) -> float:
+        return self.punch_push + self.punch_push_per_rage * rage
+
+    def crack(self, rage: float) -> float:
+        return self.crack_chance + self.crack_chance_per_rage * rage
+
+    def notice_chance(self, rage: float, dt: float) -> float:
+        return (self.notice_per_s + self.notice_per_s_per_rage * rage) * dt
+
+    def bazooka_fire_chance(self, rage: float, dt: float) -> float:
+        return (self.bazooka_fire_per_s + self.bazooka_fire_per_s_per_rage * rage) * dt
 
     def attack_pause(self, rage: float) -> float:
         return max(self.attack_pause_min_s, self.attack_pause_s - self.attack_pause_per_rage * rage)

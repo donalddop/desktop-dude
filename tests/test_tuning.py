@@ -175,3 +175,22 @@ def test_window_attack_and_parry_numbers_can_be_overridden():
     assert t.parry_chance == 0.0 and t.rage_parry_anytime == 0.3
     assert t.attack_pause(0.0) == 5.0 and t.attack_pause(1.0) == 3.2
     assert from_dict({"attack_pause_per_rage": 10.0}).attack_pause(1.0) == 0.8
+
+
+def test_punch_notice_and_bazooka_fire_match_the_old_hardcoded_formulas():
+    t = Tuning()
+    for rage in (0.0, 0.25, 0.5, 0.9, 1.0):
+        assert t.punch(rage) == 90 + 120 * rage
+        assert t.crack(rage) == 0.4 + 0.6 * rage
+        for dt in (0.016, 0.033, 1.0):
+            assert t.notice_chance(rage, dt) == (0.2 + 1.3 * rage) * dt
+            assert t.bazooka_fire_chance(rage, dt) == (0.15 + 0.6 * rage) * dt
+
+
+def test_punch_notice_and_bazooka_fire_can_be_overridden():
+    t = from_dict(
+        {"punch_push": 200.0, "crack_chance": 0.0, "crack_chance_per_rage": 0.0, "notice_per_s_per_rage": 0.0}
+    )
+    assert t.punch(1.0) == 320.0 and t.crack(1.0) == 0.0
+    assert t.notice_chance(1.0, 1.0) == 0.2
+    assert t.bazooka_fire_chance(1.0, 1.0) == 0.75

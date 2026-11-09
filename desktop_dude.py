@@ -1339,10 +1339,10 @@ class Dude(QWidget):
                 hx, hy = self.limb("hand_a", pose_punch(1.0))
                 if math.hypot(cx - hx, cy - hy) < 75 and not btn:
                     ang = math.atan2(cy - (self.y - 55), cx - self.x)
-                    power = 90 + 120 * self.rage
+                    power = self.tune.punch(self.rage)
                     self.start_shove(cur, (cx + math.cos(ang) * power, cy + math.sin(ang) * power - 20))
                     self.add_fx(cx, cy, "pow")
-                    if random.random() < 0.4 + 0.6 * self.rage:
+                    if random.random() < self.tune.crack(self.rage):
                         self.spawn_crack(cx, cy)
             if self.st > self.state_len:
                 self.after_attack()
@@ -1461,7 +1461,7 @@ class Dude(QWidget):
             return
         if self.attack_cd > 0 or btn or dist > 450:
             return
-        if random.random() < (0.2 + 1.3 * self.rage) * dt:
+        if random.random() < self.tune.notice_chance(self.rage, dt):
             self.set_state(NOTICE)
             self.add_fx(self.x, self.y - 110, "!")
             self.jump(-280)
@@ -1547,7 +1547,7 @@ class Dude(QWidget):
     def maybe_bazooka(self, dt, dist, btn):
         if self.rage < self.tune.rage_bazooka or self.bazooka_cd > 0 or not self.on_ground or btn or not 220 < dist < 1100:
             return False
-        if random.random() >= (0.15 + 0.6 * self.rage) * dt:
+        if random.random() >= self.tune.bazooka_fire_chance(self.rage, dt):
             return False
         self.set_state(AIM, 0.75)
         self.add_fx(self.x, self.y - 110, "!")
