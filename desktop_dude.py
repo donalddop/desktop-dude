@@ -1620,10 +1620,10 @@ class Dude(QWidget):
 
     def after_attack(self):
         self.attack_cd = self.tune.attack_pause(self.rage)
-        if random.random() < self.rage:
-            self.set_state(CHASE, 5.0)
+        if random.random() < self.tune.after_attack_chase_chance(self.rage):
+            self.set_state(CHASE, self.tune.after_attack_chase_s)
         else:
-            self.set_state(IDLE, random.uniform(1, 2))
+            self.set_state(IDLE, random.uniform(*self.tune.after_attack_rest()))
 
     # ---- physics
     def physics(self, dt, now):

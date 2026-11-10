@@ -194,3 +194,21 @@ def test_punch_notice_and_bazooka_fire_can_be_overridden():
     assert t.punch(1.0) == 320.0 and t.crack(1.0) == 0.0
     assert t.notice_chance(1.0, 1.0) == 0.2
     assert t.bazooka_fire_chance(1.0, 1.0) == 0.75
+
+
+def test_after_attack_numbers_match_the_old_hardcoded_behaviour():
+    t = Tuning()
+    for rage in (0.0, 0.3, 0.5, 0.9, 1.0):
+        assert t.after_attack_chase_chance(rage) == rage
+    assert t.after_attack_chase_s == 5.0
+    assert t.after_attack_rest() == (1.0, 2.0)
+
+
+def test_after_attack_numbers_can_be_overridden():
+    t = from_dict(
+        {"after_attack_chase_per_rage": 0.5, "after_attack_chase_s": 8.0, "after_attack_rest_max_s": 4.0}
+    )
+    assert t.after_attack_chase_chance(1.0) == 0.5 and t.after_attack_chase_s == 8.0
+    assert t.after_attack_rest() == (1.0, 4.0)
+    assert from_dict({"after_attack_chase_per_rage": 3.0}).after_attack_chase_chance(0.5) == 1.0
+    assert from_dict({"after_attack_rest_min_s": 3.0}).after_attack_rest() == (2.0, 3.0)

@@ -87,6 +87,10 @@ class Tuning:
     notice_per_s_per_rage: float = 1.3  # ... plus this much at full rage
     bazooka_fire_per_s: float = 0.15  # chance per second he fires the bazooka when in range ...
     bazooka_fire_per_s_per_rage: float = 0.6  # ... plus this much at full rage
+    after_attack_chase_per_rage: float = 1.0  # chance to keep chasing you after an attack = this x rage
+    after_attack_chase_s: float = 5.0  # how long that chase lasts
+    after_attack_rest_min_s: float = 1.0  # otherwise he idles between this ...
+    after_attack_rest_max_s: float = 2.0  # ... and this many seconds
 
     # ---- terror: how often (on average one act per N seconds while idle) and the pause after one
     terror_first_delay_s: float = 25.0
@@ -140,6 +144,13 @@ class Tuning:
 
     def bazooka_fire_chance(self, rage: float, dt: float) -> float:
         return (self.bazooka_fire_per_s + self.bazooka_fire_per_s_per_rage * rage) * dt
+
+    def after_attack_chase_chance(self, rage: float) -> float:
+        return min(1.0, max(0.0, self.after_attack_chase_per_rage * rage))
+
+    def after_attack_rest(self) -> tuple[float, float]:
+        lo, hi = self.after_attack_rest_min_s, self.after_attack_rest_max_s
+        return (lo, hi) if lo <= hi else (hi, lo)
 
     def attack_pause(self, rage: float) -> float:
         return max(self.attack_pause_min_s, self.attack_pause_s - self.attack_pause_per_rage * rage)
