@@ -2314,6 +2314,11 @@ def main():
         w32 = FakeWin32()
     dude = Dude(w32)
     dude.tray = build_tray(dude)
+    demo = os.environ.get("DUDE_DEMO")
+    if demo:  # smoke runs (macOS CI screenshots): the busy stuff right away, then quit
+        QTimer.singleShot(4000, dude.life.spawn_minions)
+        QTimer.singleShot(5000, dude.vandal.start_spray)
+        QTimer.singleShot(int(float(demo) * 1000), app.quit)
     sys.exit(app.exec())
 
 

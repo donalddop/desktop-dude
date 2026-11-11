@@ -22,11 +22,17 @@ macOS 13 or newer, Apple Silicon or Intel. From the
 **DesktopDude-macos-arm64.zip** (M1/M2/M3/M4) or **DesktopDude-macos-x86_64.zip** (Intel), unzip it and drag
 **DesktopDude.app** into Applications.
 
-- It isn't notarized by Apple, so the first time: **right-click the app > Open > Open**. If macOS still refuses
-  ("damaged" or "can't be opened"), run once in Terminal: `xattr -dr com.apple.quarantine /Applications/DesktopDude.app`
+- It isn't notarized by Apple (that needs a paid developer account), so macOS blocks it the first time:
+  - **macOS 15 Sequoia and newer:** open it once (it gets blocked), then System Settings > Privacy & Security,
+    scroll down to *"DesktopDude" was blocked* > **Open Anyway**. (Right-click > Open no longer works there.)
+  - **macOS 13-14:** right-click the app > Open > Open.
+  - Says it's "damaged" or still refuses? Run once in Terminal:
+    `xattr -dr com.apple.quarantine /Applications/DesktopDude.app`
 - He lives in the menu bar (no Dock icon). The menu bar icon has everything the Windows tray has.
 - To shake and surf your windows he needs **Accessibility**: macOS asks the first time (System Settings > Privacy &
   Security > Accessibility > DesktopDude on). Without it he leaves your windows alone; everything else works.
+  The app is only ad-hoc signed, so after installing a new version macOS forgets that: switch it off and on again
+  (or remove it with **-** and let him ask again).
 - The Ctrl+Option hotkeys may need **Input Monitoring** (same settings page). The menu bar icon does it all too.
 - Not on the Mac: dancing to your music and commenting on videos (macOS doesn't let apps hear the system sound),
   icon football, and Cuttlefish Pet (a Windows app). No auto-update yet: the menu has *Check for updates*.
