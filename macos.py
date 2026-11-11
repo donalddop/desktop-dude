@@ -23,6 +23,7 @@ import objc
 import Quartz
 from AppKit import NSApplication, NSScreen, NSWorkspace
 from PySide6.QtCore import QEvent, QObject, QTimer
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication, QWidget
 
 from appdir import DATA
@@ -53,7 +54,10 @@ SPACES = (1 << 0) | (1 << 4) | (1 << 6) | (1 << 8)
 
 
 def ns_window(win_id):
-    """The NSWindow behind a Qt window id (Qt's winId on macOS is an NSView pointer)."""
+    """The NSWindow behind a Qt window id (Qt's winId on macOS is an NSView pointer, but only with the real
+    Cocoa platform: under offscreen/minimal it's just a number and must never be dereferenced)."""
+    if QGuiApplication.platformName() != "cocoa" or not win_id:
+        return None
     try:
         return objc.objc_object(c_void_p=int(win_id)).window()
     except Exception:  # noqa: BLE001

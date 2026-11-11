@@ -34,7 +34,7 @@ jobs:
       - name: Tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: uv run pytest -q
+        run: uv run pytest -q --ignore tests/test_macos.py
 
       - name: macOS layer against the real desktop
         run: uv run pytest -q tests/test_macos.py -p no:cacheprovider

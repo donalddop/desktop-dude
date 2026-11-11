@@ -5,9 +5,8 @@ import sys
 
 import pytest
 
-pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="macOS only")
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+pytestmark = pytest.mark.skipif(sys.platform != "darwin" or os.environ.get("QT_QPA_PLATFORM") == "offscreen",
+                                reason="macOS with its real desktop only")
 
 
 @pytest.fixture(scope="module")
