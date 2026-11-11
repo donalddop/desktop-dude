@@ -323,7 +323,7 @@ class Sfx:
 
     def __init__(self, enabled, folder: Path):
         self.muted = True  # off by default: tray > Sound to turn it on
-        self.enabled = enabled and sys.platform == "win32"
+        self.enabled = enabled and sys.platform in ("win32", "darwin")
         self.files: dict[str, str] = {}
         self.last: dict[str, float] = {}
         self.busy_until, self.busy_prio = 0.0, 0
@@ -355,11 +355,16 @@ class Sfx:
         if (now < self.busy_until and prio < self.busy_prio) or now - self.last.get(name, 0.0) < 0.12:
             return
         self.last[name] = now
-        import winsound
-
         try:
-            winsound.PlaySound(self.files[name], winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
-        except RuntimeError:
+            if sys.platform == "darwin":
+                import subprocess
+
+                subprocess.Popen(["afplay", self.files[name]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                import winsound
+
+                winsound.PlaySound(self.files[name], winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+        except (RuntimeError, OSError):
             return
         self.busy_until, self.busy_prio = now + dur, prio
 
@@ -1018,7 +1023,7 @@ class Terror:
     def __init__(self, dude, real):
         self.d = dude
         self.enabled = True
-        self.probe = Probe() if real else FakeProbe()
+        self.probe = Probe() if real and sys.platform == "win32" else FakeProbe()  # UI Automation
         self.sfx = Sfx(real, DATA / "sounds")
         self.graffiti: list[Graffiti] = []
         self.fx: list = []

@@ -62,6 +62,7 @@ from vandal import Vandal
 from warfare import War
 
 IS_WIN = sys.platform == "win32"
+IS_MAC = sys.platform == "darwin"
 LOG = DATA / "desktop_dude.log"
 G = 2400.0  # gravity, px/s^2
 
@@ -1071,14 +1072,15 @@ class Dude(QWidget):
         self.booms: list[Boom] = []
         self.tune = tuning.current()
         self.war = War(self)
-        self.terror = Terror(self, real=isinstance(w32, Win32))
+        real = not isinstance(w32, FakeWin32)  # Win32 or MacOS: the real desktop
+        self.terror = Terror(self, real=real)
         self.arsenal = Arsenal(self, Pose, Slash)
-        self.updater = Updater(real=isinstance(w32, Win32))
+        self.updater = Updater(real=real)
         self.aqua = None
         self.update_url = None
-        self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat, "pose_air": pose_air, "pose_spray": pose_spray}, real=isinstance(w32, Win32))
-        self.aqua = Aquarium(self, self.life.kit, real=isinstance(w32, Win32))
-        self.vandal = Vandal(self, self.life.kit, real=isinstance(w32, Win32))
+        self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat, "pose_air": pose_air, "pose_spray": pose_spray}, real=real)
+        self.aqua = Aquarium(self, self.life.kit, real=real and IS_WIN)  # Cuttlefish Pet is a Windows app
+        self.vandal = Vandal(self, self.life.kit, real=real)
         self.fx: list[tuple] = []
         self.errors = 0
         self.tray = None
@@ -2253,12 +2255,15 @@ def selftest() -> int:
         ssl.create_default_context()
         assert hasattr(urllib.request, "HTTPSHandler")
         assert use_windows_certificates(), "truststore"
-        if getattr(sys, "frozen", False):  # the ears' heavy bits must have made it into the bundle
-            import ctranslate2  # noqa: F401
-            import soundcard  # noqa: F401
-            from faster_whisper.vad import get_vad_model
+        if getattr(sys, "frozen", False):
+            if IS_WIN:  # the ears' heavy bits must have made it into the bundle (Windows only)
+                import ctranslate2  # noqa: F401
+                import soundcard  # noqa: F401
+                from faster_whisper.vad import get_vad_model
 
-            get_vad_model()
+                get_vad_model()
+            if IS_MAC:
+                import macos  # noqa: F401 - pyobjc made it into the bundle
             import graffiti
 
             assert (graffiti.BASE / "assets" / "fonts" / graffiti.FONT_FILES["bubble"]).exists(), "fonts"
@@ -2287,16 +2292,27 @@ def main():
     multiprocessing.freeze_support()  # the exe is also the graffiti helper process (renderer.py)
     if "--selftest" in sys.argv:
         sys.exit(selftest())
-    if IS_WIN:
-        use_windows_certificates()
+    if IS_WIN or IS_MAC:
+        use_windows_certificates()  # truststore: the OS certificate store (Windows store / macOS keychain)
     app = QApplication(sys.argv)
     if "--poses" in sys.argv:
         render_pose_sheet(Path("pose_sheet.png"))
         return
     app.setQuitOnLastWindowClosed(False)
-    if not IS_WIN:
-        log("not on Windows: running without real cursor/window control")
-    dude = Dude(Win32() if IS_WIN else FakeWin32())
+    w32 = None
+    if IS_WIN:
+        w32 = Win32()
+    elif IS_MAC:
+        try:
+            from macos import MacOS
+
+            w32 = MacOS()
+        except Exception as e:  # noqa: BLE001 - pyobjc missing or broken: he still runs, just can't reach out
+            log(f"macOS layer unavailable: {e!r}")
+    if w32 is None:
+        log("no desktop layer for this OS: running without real cursor/window control")
+        w32 = FakeWin32()
+    dude = Dude(w32)
     dude.tray = build_tray(dude)
     sys.exit(app.exec())
 

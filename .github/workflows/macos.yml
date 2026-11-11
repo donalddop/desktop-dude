@@ -1,0 +1,71 @@
+name: macOS
+
+# Builds DesktopDude.app on GitHub's Macs (Apple Silicon and Intel), runs the tests and the app's selftest,
+# and attaches the zipped app to every published release.
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "publish/**", "Installer/**", "build.ps1"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+          - os: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: uv run pytest -q
+
+      - name: macOS layer against the real desktop
+        run: uv run pytest -q tests/test_macos.py -p no:cacheprovider
+
+      - name: Build the app
+        run: |
+          uv run --with pyinstaller --with pillow pyinstaller --noconfirm --clean --windowed --name DesktopDude \
+            --icon assets/app.ico --osx-bundle-identifier nl.donalddop.desktopdude \
+            --hidden-import truststore --add-data "assets/fonts:assets/fonts" desktop_dude.py
+          VER=$(sed -n 's/^VERSION = "\(.*\)"/\1/p' appdir.py)
+          PLIST=dist/DesktopDude.app/Contents/Info.plist
+          plutil -replace LSUIElement -bool true "$PLIST"
+          plutil -replace CFBundleShortVersionString -string "$VER" "$PLIST"
+          plutil -replace CFBundleVersion -string "$VER" "$PLIST"
+          codesign --force --deep --sign - dist/DesktopDude.app
+          ditto -c -k --keepParent dist/DesktopDude.app "DesktopDude-macos-${{ matrix.arch }}.zip"
+          ls -lh "DesktopDude-macos-${{ matrix.arch }}.zip"
+
+      - name: Selftest of the built app
+        run: |
+          dist/DesktopDude.app/Contents/MacOS/DesktopDude --selftest; code=$?
+          tail -3 "$HOME/Library/Application Support/DesktopDude/desktop_dude.log" || true
+          exit $code
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DesktopDude-macos-${{ matrix.arch }}
+          path: DesktopDude-macos-${{ matrix.arch }}.zip
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "DesktopDude-macos-${{ matrix.arch }}.zip" --clobber

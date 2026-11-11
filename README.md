@@ -1,6 +1,6 @@
 # desktop-dude
 
-A stick figure that lives on your desktop and fights your cursor. Windows only.
+A stick figure that lives on your desktop and fights your cursor. Windows and macOS.
 
     uv run --gui-script desktop_dude.py     # or double-click run.cmd
 
@@ -14,6 +14,23 @@ The installed exe updates itself: every 6 hours it checks GitHub for a new relea
 SHA-256, installs it silently and restarts (tray > Auto-update to switch it off, tray > Check for updates to
 check now). The portable zip only tells you a new version is out.
 The exe keeps its save game, log, sounds and config (`dude_config.json`, `ha.json`) in `%LOCALAPPDATA%\DesktopDude`.
+
+### macOS
+
+macOS 13 or newer, Apple Silicon or Intel. From the
+[latest release](https://github.com/donalddop/desktop-dude/releases/latest) download
+**DesktopDude-macos-arm64.zip** (M1/M2/M3/M4) or **DesktopDude-macos-x86_64.zip** (Intel), unzip it and drag
+**DesktopDude.app** into Applications.
+
+- It isn't notarized by Apple, so the first time: **right-click the app > Open > Open**. If macOS still refuses
+  ("damaged" or "can't be opened"), run once in Terminal: `xattr -dr com.apple.quarantine /Applications/DesktopDude.app`
+- He lives in the menu bar (no Dock icon). The menu bar icon has everything the Windows tray has.
+- To shake and surf your windows he needs **Accessibility**: macOS asks the first time (System Settings > Privacy &
+  Security > Accessibility > DesktopDude on). Without it he leaves your windows alone; everything else works.
+- The Ctrl+Option hotkeys may need **Input Monitoring** (same settings page). The menu bar icon does it all too.
+- Not on the Mac: dancing to your music and commenting on videos (macOS doesn't let apps hear the system sound),
+  icon football, and Cuttlefish Pet (a Windows app). No auto-update yet: the menu has *Check for updates*.
+- Save game, log and config live in `~/Library/Application Support/DesktopDude`.
 
 ### From source
 
