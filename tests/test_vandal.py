@@ -128,6 +128,20 @@ def test_he_jumps_up_and_sprays_it_himself(app):
     assert landed and dude.vandal.land_watch == 0 and dude.errors == 0, "lands, with a puff of dust"
 
 
+def test_he_sprays_in_front_of_his_piece(app):
+    w32, clock, dude = _quiet(63)
+    w32.wall_origin = lambda: None
+    raised = []
+    w32.bring_to_top = lambda h: raised.append(h)
+    assert dude.vandal.start_spray()
+    for _ in range(60 * 2):
+        clock[0] += 1 / 60
+        dude.tick(1 / 60)
+        if dude.vandal.job.get("phase") == "spray":
+            break
+    assert raised == [int(dude.winId())]
+
+
 def test_grabbed_mid_spray_the_paint_finishes(app):
     w32, clock, dude = _quiet(61)
     w32.wall_origin = lambda: None

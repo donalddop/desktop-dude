@@ -613,6 +613,7 @@ class Vandal:
                 j.update(phase="spray", t=0.0)
                 d.f = 1
                 d.terror.sfx.play("spray")
+                d.w32.bring_to_top(int(d.winId()))  # in front of the piece he's spraying, not behind its letters
             return
         p = j["piece"]
         if j["w"].img is None:  # the helper is still painting it: hover, shake the can

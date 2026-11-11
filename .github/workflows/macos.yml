@@ -64,6 +64,8 @@ jobs:
           LOG="$HOME/Library/Application Support/DesktopDude/desktop_dude.log"
           open ~ || true
           sleep 2
+          # a big white Finder window behind him: the dude is nearly black, the runner's desktop is black
+          osascript -e 'tell application "Finder" to set bounds of front window to {40, 60, 1500, 840}' || true
           DUDE_DEMO=14 dist/DesktopDude.app/Contents/MacOS/DesktopDude &
           sleep 5.5; screencapture -x shot-1.png
           sleep 1.2; screencapture -x shot-2.png
