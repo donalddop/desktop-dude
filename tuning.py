@@ -93,24 +93,24 @@ class Tuning:
     after_attack_rest_max_s: float = 2.0  # ... and this many seconds
 
     # ---- terror: how often (on average one act per N seconds while idle) and the pause after one
-    terror_first_delay_s: float = 25.0
-    terror_every_calm_s: float = 45.0
-    terror_every_angry_s: float = 12.0
-    terror_cooldown_calm_s: tuple[float, float] = (30.0, 60.0)
-    terror_cooldown_angry_s: tuple[float, float] = (10.0, 20.0)
-    blackout_cooldown_s: float = 120.0
+    terror_first_delay_s: float = 25.0  # seconds before his very first terror act
+    terror_every_calm_s: float = 45.0  # one act per this many seconds on average while calm
+    terror_every_angry_s: float = 12.0  # one act per this many seconds on average while angry
+    terror_cooldown_calm_s: tuple[float, float] = (30.0, 60.0)  # pause [min, max] after an act while calm
+    terror_cooldown_angry_s: tuple[float, float] = (10.0, 20.0)  # pause [min, max] after an act while angry
+    blackout_cooldown_s: float = 120.0  # at least this long between two blackouts
     terror_weights: dict[str, float] = field(default_factory=_weights)  # relative odds per act
 
     # ---- war: chance per second once rage is high enough, and the wait before the next one
-    drones_rate: float = 0.5
-    tank_rate: float = 0.35
-    air_rate: float = 0.35
-    drones_first_s: float = 6.0
-    tank_first_s: float = 12.0
-    air_first_s: float = 20.0
-    drones_cooldown_s: float = 45.0
-    tank_cooldown_s: float = 75.0
-    air_cooldown_s: float = 60.0
+    drones_rate: float = 0.5  # drones: chance per second once rage passes rage_drones
+    tank_rate: float = 0.35  # tank: chance per second once rage passes rage_tank
+    air_rate: float = 0.35  # airstrike: chance per second once rage passes rage_air
+    drones_first_s: float = 6.0  # no drones in the first this-many seconds after start
+    tank_first_s: float = 12.0  # no tank in the first this-many seconds after start
+    air_first_s: float = 20.0  # no airstrike in the first this-many seconds after start
+    drones_cooldown_s: float = 45.0  # wait before drones can come again
+    tank_cooldown_s: float = 75.0  # wait before a tank can come again
+    air_cooldown_s: float = 60.0  # wait before an airstrike can come again
 
     def chase(self, rage: float) -> float:
         return self.chase_speed + self.chase_speed_per_rage * rage
