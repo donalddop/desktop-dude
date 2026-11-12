@@ -2077,6 +2077,18 @@ class Dude(QWidget):
             self.tray.showMessage("Desktop Dude", "Tuning herladen uit dude_config.json.")
         return self.tune
 
+    def edit_tuning(self):
+        """Open dude_config.json in the default editor (created with an empty "tuning" block if needed)."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        path = tuning.ensure_config(DATA / "dude_config.json")
+        log(f"edit tuning: {path}")
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))) and self.tray:
+            self.tray.showMessage("Desktop Dude", f"Kon geen editor openen voor {path}")
+        elif self.tray:
+            self.tray.showMessage("Desktop Dude", "Sla op en kies daarna 'Reload tuning'.")
+
     def quit(self):
         self.release_everything()
         for c in self.cracks:
@@ -2112,6 +2124,7 @@ def build_tray(dude: Dude):
         ("Duel! (Ctrl+Alt+D)", dude.life.toggle_duel),
         ("Summon mini-dudes", dude.life.spawn_minions),
         ("Clear graffiti", dude.clear_graffiti),
+        ("Edit tuning...", dude.edit_tuning),
         ("Reload tuning", dude.reload_tuning),
         ("Terror mode: on", dude.toggle_terror),
         ("Sound: off", dude.toggle_sound),

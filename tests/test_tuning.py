@@ -212,3 +212,34 @@ def test_after_attack_numbers_can_be_overridden():
     assert t.after_attack_rest() == (1.0, 4.0)
     assert from_dict({"after_attack_chase_per_rage": 3.0}).after_attack_chase_chance(0.5) == 1.0
     assert from_dict({"after_attack_rest_min_s": 3.0}).after_attack_rest() == (2.0, 3.0)
+
+
+def test_ensure_config_creates_a_file_with_an_empty_tuning_block(tmp_path):
+    p = tmp_path / "dude_config.json"
+    assert tuning.ensure_config(p) == p
+    assert json.loads(p.read_text(encoding="utf-8")) == {"tuning": {}}
+    assert load(p) == Tuning()
+
+
+def test_ensure_config_adds_the_block_and_keeps_other_keys(tmp_path):
+    p = tmp_path / "dude_config.json"
+    p.write_text(json.dumps({"lat": 52.22, "lon": 5.17, "listen_model": "gemma"}), encoding="utf-8")
+    tuning.ensure_config(p)
+    assert json.loads(p.read_text(encoding="utf-8")) == {
+        "lat": 52.22,
+        "lon": 5.17,
+        "listen_model": "gemma",
+        "tuning": {},
+    }
+
+
+def test_ensure_config_leaves_an_existing_block_and_a_broken_file_alone(tmp_path):
+    p = tmp_path / "dude_config.json"
+    text = '{\n  "tuning": {"rage_angry": 0.5}\n}\n'
+    p.write_text(text, encoding="utf-8")
+    tuning.ensure_config(p)
+    assert p.read_text(encoding="utf-8") == text
+    broken = '{"tuning": {"rage_angry": 0.5,'
+    p.write_text(broken, encoding="utf-8")
+    tuning.ensure_config(p)
+    assert p.read_text(encoding="utf-8") == broken

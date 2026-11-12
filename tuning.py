@@ -212,6 +212,25 @@ def load(path: Path, log=lambda msg: None) -> Tuning:
     return from_dict(raw if isinstance(raw, dict) else {}, log)
 
 
+def ensure_config(path: Path) -> Path:
+    """Make sure dude_config.json exists and has a "tuning" block to type in (tray menu: Edit tuning...).
+
+    Missing file: created with an empty "tuning" block. Existing file without one: the block is added and every
+    other key stays as it was. A file that already has the block, or can't be read as a JSON object, is left
+    exactly as it is (better an editor on a broken file than overwriting what you typed)."""
+    if not path.exists():
+        path.write_text(json.dumps({"tuning": {}}, indent=1) + "\n", encoding="utf-8")
+        return path
+    try:
+        cfg = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return path
+    if isinstance(cfg, dict) and "tuning" not in cfg:
+        cfg["tuning"] = {}
+        path.write_text(json.dumps(cfg, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    return path
+
+
 _current: Tuning | None = None
 
 
