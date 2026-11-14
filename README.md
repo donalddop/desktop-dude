@@ -161,7 +161,7 @@ them in a `"tuning"` block in `dude_config.json`, e.g. `{"tuning": {"terror_ever
 | `terror_cooldown_calm_s` | [30, 60] | pause [min, max] after an act while calm |
 | `terror_cooldown_angry_s` | [10, 20] | pause [min, max] after an act while angry |
 | `blackout_cooldown_s` | 120 | at least this long between two blackouts |
-| `terror_weights` | graffiti 3, popup 1.5, taunt 1, steal 2, surf 2.5, hunt 2, glass 2.5, quake 1.5, blackout 1.2 | relative odds per act |
+| `terror_weights` | graffiti 3, popup 1.5, taunt 1, steal 2, surf 2.5, hunt 3, glass 2.5, quake 1.5, blackout 1.2 | relative odds per act |
 
 **War: chance per second once rage is high enough, and the wait before the next one**
 
@@ -176,6 +176,17 @@ them in a `"tuning"` block in `dude_config.json`, e.g. `{"tuning": {"terror_ever
 | `drones_cooldown_s` | 45 | wait before drones can come again |
 | `tank_cooldown_s` | 75 | wait before a tank can come again |
 | `air_cooldown_s` | 60 | wait before an airstrike can come again |
+
+**Cuttlefish Pet (aquarium.py): how often he goes after a cuttlefish, and how far he leaps for one**
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `aqua_first_delay_s` | 12 | seconds before he first goes after a cuttlefish |
+| `aqua_cooldown_s` | [12, 30] | pause [min, max] after each go at one |
+| `aqua_chance_per_s` | 0.3 | chance per second, while he's idle and one is in reach, that he goes for it |
+| `aqua_hunt_bias` | 2 | fight, carry and eat weigh this many times more than petting and riding do |
+| `aqua_reach_up_px` | 700 | he goes for cuttlefish up to this far above his feet |
+| `aqua_leap_speed` | 1900 | and leaps at them with up to this upward speed (px/s) (goes with `aqua_reach_up_px`) |
 
 <!-- tuning-table:end -->
 
@@ -219,8 +230,10 @@ Marker (Apache 2.0) from Google Fonts, licenses in `assets/fonts`.
 
 - **Your apps:** watching something (YouTube, Netflix, VLC...)? He sits down with popcorn. Coding or in Claude?
   "Werk je wel, mattie?". Only the active window's title is read.
-- **Your music:** reads Windows' output peak meter and dances on the beat: headbang, hands up, running man,
-  DJ scratch with headphones. He can tell music from people talking (ears.py): a podcast or a video is loud
+- **Your music:** reads Windows' output peak meter and dances on the beat. He keeps his own beat clock (the
+  tempo comes from the beats he hears and every beat nudges it back in line), so he moves smoothly between
+  beats and doesn't freeze when one is missed. Seven moves, eased into each other every 8 beats: bounce with a
+  headbang, rave hands, running man, DJ scratch with headphones, gabber *hakken*, robot and a disco point. He can tell music from people talking (ears.py): a podcast or a video is loud
   too, but he won't dance to it. Music has a periodic beat, speech has voice activity (Silero VAD); a vote
   over the last ~18 s decides.
 - **Comments on what you watch (opt-in, Tray > Comment on videos/podcasts):** when people talk he listens to
@@ -247,9 +260,12 @@ Marker (Apache 2.0) from Google Fonts, licenses in `assets/fonts`.
   The "power cut" terror then snapshots the lights that are on, switches them off and restores the snapshot ~2s later.
 
 - **Cuttlefish Pet:** if [Cuttlefish Pet](https://github.com/donalddop/cuttlefish-pet) (2.9+) runs too, they talk
-  over its link pipe. The dude rides a cuttlefish (cowboy hat on) until it bucks him off, carries one overhead
+  over its link pipe. He hunts them: every 12-30 s or so he goes after one, anywhere up to 700 px above his
+  feet, and leaps for it (a pounce that catches it at the top of the arc). He rides a cuttlefish (cowboy hat on)
+  until it bucks him off - Cuttlefish Pet 2.10.2+ puffs a ridden one up to steed size - carries one overhead
   and throws it, pets one (hearts), fights one (it inks him back) and, rarely, eats one for real: it lands in
   Cuttlefish Pet's graveyard as *opgegeten door de dude*. Cuttlefish Pet refuses that with two or fewer left.
+  How often and how far he goes: the `aqua_*` keys in the tuning table.
   Tray > Aquarium triggers each on demand.
 
 Tray > Life test triggers everything on demand; the tray also shows level, XP, grudge and Home Assistant status.

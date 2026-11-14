@@ -259,3 +259,34 @@ def test_starts_with_a_grudge(app, tmp_path, monkeypatch):
     _w32, clock, dude = _make(62)
     _run(dude, clock, 2)
     assert dude.life.save["grudge"] > 7 and dude.rage >= 0.45 and dude.life.level == 2 and dude.errors == 0
+
+
+def test_every_dance_move_is_smooth(app):
+    from desktop_dude import Pose
+    from life import DANCES, pose_dance
+
+    for move in range(len(DANCES)):
+        prev = pose_dance(Pose, move, 0.0)
+        for i in range(1, 241):  # four beats in small steps: no jumps anywhere
+            p = pose_dance(Pose, move, i / 60)
+            for a, b in ((p.thigh, prev.thigh), (p.shin, prev.shin), (p.upper, prev.upper), (p.lower, prev.lower)):
+                assert abs(a[0] - b[0]) < 0.35 and abs(a[1] - b[1]) < 0.35, (DANCES[move], i)
+            assert abs(p.lean - prev.lean) < 0.35
+            prev = p
+
+
+def test_dance_keeps_the_beat_clock_running(app):
+    _w32, clock, dude = _quiet(66)
+    life = dude.life
+    life.music.feed = lambda t: 0.7 if (t % 0.5) < 0.04 else 0.12  # 120 bpm
+    _run(dude, clock, 60 * 3)
+    dude.set_state(dd.IDLE, 5.0)
+    assert life.trigger("dance")
+    poses = set()
+    for _ in range(60 * 6):
+        clock[0] += 1 / 60
+        dude.tick(1 / 60)
+        poses.add(round(dude.pose.upper[0], 2))
+    g = life.goal
+    assert dude.state == "dance" and 105 < g["bpm"] < 135, g["bpm"]
+    assert g["ph"] > 8 and len(poses) > 40, "he keeps moving, between the beats too"

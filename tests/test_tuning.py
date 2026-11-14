@@ -20,7 +20,7 @@ def test_defaults_match_the_old_hardcoded_numbers():
         "taunt": 1.0,
         "steal": 2.0,
         "surf": 2.5,
-        "hunt": 2.0,
+        "hunt": 3.0,  # raised on purpose (14 nov): he hunts the cuttlefish more often
         "glass": 2.5,
         "quake": 1.5,
         "blackout": 1.2,

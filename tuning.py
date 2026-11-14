@@ -24,7 +24,7 @@ def _weights() -> dict[str, float]:
         "taunt": 1.0,
         "steal": 2.0,
         "surf": 2.5,
-        "hunt": 2.0,
+        "hunt": 3.0,
         "glass": 2.5,
         "quake": 1.5,
         "blackout": 1.2,
@@ -111,6 +111,14 @@ class Tuning:
     drones_cooldown_s: float = 45.0  # wait before drones can come again
     tank_cooldown_s: float = 75.0  # wait before a tank can come again
     air_cooldown_s: float = 60.0  # wait before an airstrike can come again
+
+    # ---- Cuttlefish Pet (aquarium.py): how often he goes after a cuttlefish, and how far he leaps for one
+    aqua_first_delay_s: float = 12.0  # seconds before he first goes after a cuttlefish
+    aqua_cooldown_s: tuple[float, float] = (12.0, 30.0)  # pause [min, max] after each go at one
+    aqua_chance_per_s: float = 0.3  # chance per second, while he's idle and one is in reach, that he goes for it
+    aqua_hunt_bias: float = 2.0  # fight, carry and eat weigh this many times more than petting and riding do
+    aqua_reach_up_px: float = 700.0  # he goes for cuttlefish up to this far above his feet ...
+    aqua_leap_speed: float = 1900.0  # ... and leaps at them with up to this upward speed (px/s)
 
     def chase(self, rage: float) -> float:
         return self.chase_speed + self.chase_speed_per_rage * rage

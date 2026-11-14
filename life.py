@@ -101,20 +101,77 @@ def pose_coffee(P, t):
              (3.2 if sip else 2.2, -0.3))
 
 
-def pose_dance(P, move, ph):
-    s = math.sin(ph * math.pi)
-    b = abs(s)
-    if move == 0:  # headbang + fist pump
-        return P(0.05 + 0.4 * b, (0.3, -0.3), (-0.1 - 0.4 * b, -0.1 - 0.4 * b), (2.6 + 0.3 * s, 0.4),
-                 (2.9 + 0.3 * s, 0.9))
-    if move == 1:  # hands in the air
-        return P(0.06 * s, (0.35 * b, -0.35 * b), (-0.4 * b, -0.4 * b), (2.8 + 0.2 * s, -2.8 + 0.2 * s),
-                 (3.1 + 0.4 * s, -3.1 + 0.4 * s))
-    if move == 2:  # running man
-        return P(0.1, (0.7 * s, -0.7 * s), (-0.6 * max(0, s), -0.6 * max(0, -s)), (0.3 - 0.8 * s, -0.3 + 0.8 * s),
-                 (1.5 - 0.6 * s, -1.5 + 0.6 * s))
-    sc = math.sin(ph * math.pi * 4)  # DJ: scratching + hand on the headphones
-    return P(0.15 + 0.15 * b, (0.25, -0.25), (-0.25 * b, -0.25 * b), (1.2, 2.4), (1.6 + 0.45 * sc, 3.4))
+DANCES = ("bounce", "rave", "running man", "dj", "hakken", "robot", "disco")  # index 3 = DJ (headphones)
+ROBOT = (((1.57, -0.25), (3.14, -0.25), 0.0), ((0.05, -1.57), (1.57, -3.14), 0.0),
+         ((1.57, -1.57), (1.57, -1.57), 0.06), ((0.3, -0.3), (1.57, -1.57), -0.04))
+
+
+def _smooth(x):
+    x = min(1.0, max(0.0, x))
+    return x * x * (3 - 2 * x)
+
+
+def blend_pose(P, a, b, k):
+    """Pose a eased into pose b (k 0..1): no snapping between moves."""
+    def mix(x, y):
+        return x + (y - x) * k
+
+    def pair(x, y):
+        return (mix(x[0], y[0]), mix(x[1], y[1]))
+
+    return P(mix(a.lean, b.lean), pair(a.thigh, b.thigh), pair(a.shin, b.shin), pair(a.upper, b.upper),
+             pair(a.lower, b.lower))
+
+
+def pose_dance(P, move, ph, energy=1.0):
+    """One dance move at beat position ph (continuous: 1.0 = one beat, so it always moves on the music).
+    energy 0..1 scales how big he goes. The knees bend on every beat: that's the groove."""
+    e = 0.55 + 0.45 * min(1.0, max(0.0, energy))
+    b = ph % 1.0  # inside the beat
+    t = ph % 2.0  # inside a two-beat bar
+    bend = (0.5 + 0.5 * math.cos(2 * math.pi * b)) * e  # deepest on the beat
+    side = math.sin(math.pi * t)  # sway over the bar
+    knee = 0.38 * bend
+
+    def legs(sway=0.08, k=knee):
+        return (k + 0.06 + sway * side, k - 0.06 + sway * side), (-k * 1.1, -k * 1.1)
+
+    if move == 0:  # bounce: headbang on the beat, one fist pumping, the other arm swinging
+        thigh, shin = legs()
+        return P(0.06 + 0.32 * bend, thigh, shin, (2.3 + 0.55 * bend, 0.25 - 0.35 * side),
+                 (2.8 + 0.45 * bend, 0.75 - 0.2 * side))
+    if move == 1:  # rave: both hands up, waving across the bar
+        thigh, shin = legs(0.1)
+        return P(0.05 * side, thigh, shin, (2.7 + 0.28 * side * e, -2.7 + 0.28 * side * e),
+                 (3.05 + 0.4 * side * e, -3.05 + 0.4 * side * e))
+    if move == 2:  # running man: a two-beat cycle, one foot slides back as the other knee comes up
+        s2 = math.sin(math.pi * t)
+        return P(0.12 + 0.06 * bend, (0.8 * s2 * e, -0.8 * s2 * e),
+                 (-0.75 * max(0.0, s2) * e - 0.08, -0.75 * max(0.0, -s2) * e - 0.08),
+                 (0.35 - 0.9 * s2 * e, -0.35 + 0.9 * s2 * e), (1.6 - 0.6 * s2 * e, -1.6 + 0.6 * s2 * e))
+    if move == 3:  # DJ: hand on the headphones, scratching twice a beat, nodding along
+        sc = math.sin(ph * math.pi * 4)
+        thigh, shin = legs(0.04, knee * 0.6)
+        return P(0.14 + 0.16 * bend, thigh, shin, (1.2, 2.4), (1.6 + 0.45 * sc, 3.4))
+    if move == 4:  # hakken: Dutch gabber stomping, a heel kick every half beat, fists pumping low
+        q = math.sin(2 * math.pi * ph)
+        la, lb = max(0.0, q) * e, max(0.0, -q) * e
+        pump = 0.5 + 0.5 * math.cos(4 * math.pi * b)
+        return P(0.2 + 0.08 * pump, (0.1 + 0.55 * la, 0.05 + 0.55 * lb),
+                 (0.1 - 0.5 * la, 0.05 - 0.5 * lb), (1.75 + 0.35 * pump, 1.55 + 0.35 * (1 - pump)),
+                 (2.5 + 0.3 * pump, 2.3 + 0.3 * (1 - pump)))
+    if move == 5:  # robot: a new hard pose on every beat, snapped in fast, stiff little bob
+        i = int(ph) % len(ROBOT)
+        (u0, l0, lean0), (u1, l1, lean1) = ROBOT[(i - 1) % len(ROBOT)], ROBOT[i]
+        k = _smooth(b * 3.5)  # a quick pop into the new pose, not a teleport
+        thigh, shin = legs(0.0, knee * 0.25)
+        return P(lean0 + (lean1 - lean0) * k, thigh, shin, (u0[0] + (u1[0] - u0[0]) * k, u0[1] + (u1[1] - u0[1]) * k),
+                 (l0[0] + (l1[0] - l0[0]) * k, l0[1] + (l1[1] - l0[1]) * k))
+    # disco: point up to the sky, then down across, hip swinging, other hand on the hip
+    pt = _smooth(0.5 - 0.5 * math.cos(math.pi * t))
+    thigh, shin = legs(0.16)
+    return P(-0.05 + 0.1 * side, thigh, shin, (2.55 - 1.9 * pt, -0.7), (2.65 - 2.3 * pt, 1.0))
+
 
 
 # --------------------------------------------------------------------------- persistence
@@ -779,7 +836,8 @@ class Life:
     def begin(self, kind):
         d = self.d
         d.vx = 0.0
-        self.goal = {"phase": kind, "beats": 0, "move": random.randrange(4), "ph": 0.0, "near": 0.0}
+        self.goal = {"phase": kind, "beats": 0, "move": random.randrange(len(DANCES)), "ph": 0.0, "near": 0.0,
+                     "bpm": 120.0, "gaps": [], "last": None, "prev": None, "mix": 1.0, "bar": 0}
         d.set_state(kind, {"watch": random.uniform(12, 25), "sleep": random.uniform(40, 120),
                            "coffee": 8.0, "dance": random.uniform(10, 20)}[kind])
         d.terror.say(kind)
@@ -860,11 +918,22 @@ class Life:
         d.vx = 0.0
         if self.music.beat:
             g["beats"] += 1
-            g["ph"] = 0.0
-            if g["beats"] % 8 == 0:
-                g["move"] = (g["move"] + random.randint(1, 3)) % 4
+            now = self.music.t
+            if g["last"] is not None and 0.3 < now - g["last"] < 1.0:  # 60-200 bpm: a real beat gap
+                g["gaps"] = (g["gaps"] + [now - g["last"]])[-8:]
+                gaps = sorted(g["gaps"])
+                g["bpm"] = min(180.0, max(70.0, 60.0 / gaps[len(gaps) // 2]))
+            g["last"] = now
+            frac = g["ph"] % 1.0
+            g["ph"] -= (frac if frac < 0.5 else frac - 1.0) * 0.5  # nudge the beat clock onto the beat
+        g["ph"] += dt * g["bpm"] / 60.0  # his own beat clock: he keeps moving even when a beat is missed
+        g["mix"] = min(1.0, g["mix"] + dt / 0.45)
+        if int(g["ph"] // 8) > g["bar"]:  # every 8 beats: a new move, eased in
+            g["bar"] = int(g["ph"] // 8)
+            g["prev"], g["mix"] = g["move"], 0.0
+            g["move"] = random.choice([m for m in range(len(DANCES)) if m != g["move"]])
+            if g["bar"] % 2 == 0:
                 d.f = -d.f
-        g["ph"] = min(1.0, g["ph"] + dt * 3)
         if ((not self.music.playing and (self.music.loud_for == 0 or self.music.kind == "talk") and d.st > 2)
                 or d.st > d.state_len):
             self.stand_up()
@@ -1080,7 +1149,11 @@ class Life:
             return pose_coffee(P, d.t)
         if s == "dance":
             g = self.goal
-            return pose_dance(P, g.get("move", 0), g.get("ph", 0.0))
+            ph, energy = g.get("ph", 0.0), min(1.0, self.music.level * 4)
+            p = pose_dance(P, g.get("move", 0), ph, energy)
+            if g.get("prev") is not None and g.get("mix", 1.0) < 1.0:
+                p = blend_pose(P, pose_dance(P, g["prev"], ph, energy), p, _smooth(g["mix"]))
+            return p
         if s == "build":
             return self.kit["pose_crouch"]()
         if s == "kickstart" and self.goal.get("phase") == "kick":

@@ -132,3 +132,29 @@ def test_fish_that_swims_off_is_given_up(app):
     aq.link.fish[7]["y"] -= 250  # out of jumping reach
     assert aq.start("pet", 7)
     assert _until(dude, clock, lambda: dude.state != "aqua", 12) and aq.stats["pet"] == 0
+
+
+def test_he_leaps_for_one_swimming_high_up(app):
+    _w32, clock, dude = _setup(78)
+    aq = dude.aqua
+    floor = dude.world.floor_at(dude.x)
+    aq.link.fish[7].update(x=dude.x + 120, y=floor - 450, t=floor - 530, bo=floor - 440)
+    assert aq.candidates("carry") == [7], "in reach now, way above his head"
+    assert aq.start("carry", 7)
+    top = dude.y
+    assert _until(dude, clock, lambda: bool(_ops(dude, "hold")), 5), "caught it mid-leap"
+    for _ in range(30):
+        clock[0] += 1 / 60
+        dude.tick(1 / 60)
+        top = min(top, dude.y)
+    assert top < floor - 300 and dude.errors == 0
+
+
+def test_hunting_beats_cuddling(app):
+    _w32, _clock, dude = _setup(79)
+    aq = dude.aqua
+    dude.rage = 0.0
+    picks = [aq.pick_mode() for _ in range(600)]
+    hunt = sum(m in ("fight", "carry", "eat") for m in picks)
+    assert hunt > sum(m in ("pet", "ride") for m in picks) * 0.9
+    assert aq.tune.aqua_cooldown_s[1] <= 30 and aq.tune.aqua_chance_per_s >= 0.3

@@ -20,7 +20,7 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainterPath, QPen
 
 from arsenal import PopText
-from life import pose_sit
+from life import G, pose_sit
 from terror import LINES, _log
 from warfare import OUTLINE, FxWindow, _painter
 
@@ -30,6 +30,7 @@ SEAT = 18.0  # feet below the back so the sitting pose's hip (22 px up) sinks in
 
 LINES.update({
     "aqua_ride": ["Yeehaw kanker!", "Hop inktvis, lopen!", "Rodeo, mattie!"],
+    "aqua_leap": ["HIER JIJ!", "Kom hier, inktpot!", "Hebbes!", "Spring, mattie!"],
     "aqua_thrown": ["Tering, ik lig eraf!", "Kankerbeest, rustig!", "Die vis is gestoord, wollah"],
     "aqua_carry": ["Kom maar mee, visje", "Gratis vlucht, wollah"],
     "aqua_throw": ["VLIEGENDE VIS!", "Doei inktvis!"],
@@ -165,10 +166,16 @@ class Aquarium:
         self.enabled = True
         self.job: dict = {}
         self.fx: list = []
-        self.cd, self.eat_cd, self.next_tray = 25.0, 240.0, 0.0
+        self.cd, self.eat_cd, self.next_tray = self.tune.aqua_first_delay_s, 240.0, 0.0
         self.stats = dict.fromkeys(self.MODES, 0)
 
     # ---- facts
+    @property
+    def tune(self):
+        import tuning
+
+        return getattr(self.d, "tune", None) or tuning.current()
+
     @property
     def FROZEN(self):
         return ("aqua",) if self.d.state == "aqua" and self.job.get("phase") == "ride" else ()
@@ -193,17 +200,18 @@ class Aquarium:
             f = self.fish(fid)
             if f is None or f.get("beh") in BUSY:
                 continue
-            if d.y - 330 <= f["y"] <= d.y + 30 and abs(f["x"] - d.x) < 900:
+            if d.y - self.tune.aqua_reach_up_px <= f["y"] <= d.y + 30 and abs(f["x"] - d.x) < 1400:
                 out.append((abs(f["x"] - d.x) + abs(f["y"] - d.y) * 0.5, fid))
         return [fid for _, fid in sorted(out)]
 
     # ---- starting
     def pick_mode(self):
         d = self.d
+        b = self.tune.aqua_hunt_bias  # he's a hunter: going for them beats cuddling them
         if d.rage >= 0.5:
-            w = {"fight": 3, "carry": 2, "ride": 1, "eat": 1.5 if self.eat_cd <= 0 else 0, "pet": 0}
+            w = {"fight": 3 * b, "carry": 2 * b, "ride": 1, "eat": 1.5 * b if self.eat_cd <= 0 else 0, "pet": 0}
         else:
-            w = {"pet": 3, "ride": 3, "carry": 2, "fight": 1, "eat": 0.3 if self.eat_cd <= 0 else 0}
+            w = {"pet": 2, "ride": 3, "carry": 2 * b, "fight": 1 * b, "eat": 0.3 * b if self.eat_cd <= 0 else 0}
         modes = [m for m in w if w[m] > 0]
         return random.choices(modes, weights=[w[m] for m in modes])[0]
 
@@ -219,7 +227,7 @@ class Aquarium:
         self.job = {"mode": mode, "id": fid, "phase": "go", "t": 0.0, "n": 0, "k": 0.0, "until": 0.0}
         d.set_state("aqua", 99.0)
         d.terror.say("aqua_" + mode)
-        self.cd = random.uniform(40, 90)
+        self.cd = random.uniform(*self.tune.aqua_cooldown_s)
         return True
 
     # ---- per frame
@@ -232,7 +240,7 @@ class Aquarium:
                 self.run(dt, cur, btn)
             return True
         if (self.enabled and self.cd <= 0 and not btn and d.on_ground and d.state in ("idle", "wander")
-                and self.link.fish and d.life.duel is None and random.random() < 0.05 * dt):
+                and self.link.fish and d.life.duel is None and random.random() < self.tune.aqua_chance_per_s * dt):
             return self.start(self.pick_mode())
         return False
 
@@ -310,8 +318,8 @@ class Aquarium:
     def approach(self, dt, f):
         d, j = self.d, self.job
         dx = f["x"] - d.x
-        reach = abs(dx) < 50 and d.y - 200 < f["y"] < d.y + 30
-        if reach and (d.on_ground or j["mode"] == "ride"):
+        reach = abs(dx) < (65 if j.get("leap") else 50) and d.y - 200 < f["y"] < d.y + 45
+        if reach and (d.on_ground or j["mode"] != "pet"):  # he catches them mid-leap; petting needs his feet
             j.update(phase="act", t=0.0, k=0.0, until=0.0)
             d.vx = 0.0
             if j["mode"] == "ride":
@@ -324,13 +332,38 @@ class Aquarium:
         if j["t"] > 9.0:
             self.finish("aqua_lost")
             return
+        if not d.on_ground and j.get("leap"):
+            return  # mid-leap: the arc does the work
+        j["leap"] = False
         d.f = 1 if dx >= 0 else -1
         if abs(dx) > 25:
             d.walk(math.copysign(340, dx))
         else:
             d.vx = 0.0
-        if d.on_ground and f["y"] < d.y - 90 and abs(dx) < 160:
-            d.jump(-min(1150.0, 450 + (d.y - f["y"]) * 2.6))
+        high = d.y - f["y"]
+        if d.on_ground and high > 90 and abs(dx) < 260:
+            if j["mode"] == "pet":
+                if abs(dx) < 160:
+                    d.jump(-min(1150.0, 450 + high * 2.6))  # a hop, no lunge: you don't pounce on a cuddle
+                return
+            self.leap(f, high, dx)
+
+    def leap(self, f, high, dx):
+        """Pounce: straight up to where the cuttlefish will be, catching it at the top of the arc."""
+        d, j = self.d, self.job
+        v = min(self.tune.aqua_leap_speed, math.sqrt(2 * G * (high + 40)))
+        t_peak = v / G
+        d.jump(-v)
+        d.vx = (dx + f.get("vx", 0.0) * t_peak) / t_peak
+        d.f = 1 if d.vx >= 0 else -1
+        j["leap"] = True
+        try:
+            from vandal import Dust
+
+            self.fx.append(Dust(d.x, d.y - 25, 0.8))
+        except Exception:  # noqa: BLE001, S110 - a missing puff of dust never stops the hunt
+            pass
+        d.terror.say("aqua_leap")
 
     def run_ride(self, dt, f):
         d, j = self.d, self.job
