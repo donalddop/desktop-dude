@@ -179,7 +179,7 @@ def pose_dance(P, move, ph, energy=1.0):
 
 class Save:
     DEFAULTS: ClassVar[dict] = {"xp": 0, "grudge": 0.0, "punched": 0, "thrown": 0, "hits": 0, "duels_won": 0, "duels_lost": 0,
-                "fish": 0, "binned": 0}
+                "fish": 0, "binned": 0, "rival_won": 0, "rival_lost": 0}
 
     def __init__(self, path: Path | None):
         self.path, self.data, self.dirty = path, dict(self.DEFAULTS), False

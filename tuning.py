@@ -120,6 +120,15 @@ class Tuning:
     aqua_reach_up_px: float = 700.0  # he goes for cuttlefish up to this far above his feet ...
     aqua_leap_speed: float = 1900.0  # ... and leaps at them with up to this upward speed (px/s)
 
+    # ---- the rival (rival.py): Kees is the dude's usual sparring partner whenever the cursor leaves him be
+    rival_first_delay_s: float = 15.0  # seconds after start before Kees can first turn up
+    rival_cooldown_s: tuple[float, float] = (25.0, 70.0)  # breather [min, max] between matches
+    rival_chance_per_s: float = 0.25  # chance per second, once everything is quiet, that he turns up
+    rival_quiet_s: float = 6.0  # the cursor has to leave the dude alone this long before a fight starts
+    rival_patience_s: float = 45.0  # Kees waits this long for you to finish with the dude, then leaves
+    rival_hp: float = 100.0  # hit points each fighter starts with, every round (a punch takes ~9, a kick ~12)
+    rival_rounds: int = 2  # rounds to win a match: 2 is best of three, 1 is a single knockout
+
     def chase(self, rage: float) -> float:
         return self.chase_speed + self.chase_speed_per_rage * rage
 

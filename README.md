@@ -188,6 +188,18 @@ them in a `"tuning"` block in `dude_config.json`, e.g. `{"tuning": {"terror_ever
 | `aqua_reach_up_px` | 700 | he goes for cuttlefish up to this far above his feet |
 | `aqua_leap_speed` | 1900 | and leaps at them with up to this upward speed (px/s) (goes with `aqua_reach_up_px`) |
 
+**The rival (rival.py): Kees is the dude's usual sparring partner whenever the cursor leaves him be**
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `rival_first_delay_s` | 15 | seconds after start before Kees can first turn up |
+| `rival_cooldown_s` | [25, 70] | breather [min, max] between matches |
+| `rival_chance_per_s` | 0.25 | chance per second, once everything is quiet, that he turns up |
+| `rival_quiet_s` | 6 | the cursor has to leave the dude alone this long before a fight starts |
+| `rival_patience_s` | 45 | Kees waits this long for you to finish with the dude, then leaves |
+| `rival_hp` | 100 | hit points each fighter starts with, every round (a punch takes ~9, a kick ~12) |
+| `rival_rounds` | 2 | rounds to win a match: 2 is best of three, 1 is a single knockout |
+
 <!-- tuning-table:end -->
 
 Rage runs 0..1; a `*_per_rage` key is the full-rage amount on top of (or off) its base key. Changed something in `tuning.py`? Run
@@ -204,6 +216,31 @@ When he's chasing you he grabs a random weapon (more serious stuff the angrier h
 - Thrown: grenade (bounces, 2s fuse), dynamite (3-2-1, big boom + quake), cream pie (splats on screen, fades), boomerang (hits you on the way out and back)
 
 Same rules: cursor is never flung while you hold a mouse button, windows snap back, holes and splats fade. Punch or throw him and he drops it.
+
+## His rival: Kees (rival.py)
+
+The dude has a sworn enemy, and whenever you're not terrorising him himself, he's mostly fighting him:
+**Kees**, an orange stick figure with his cap on backwards, runs in from the side or drops in from the top of
+the screen with a superhero landing. They size each other up, talk some trash, and then it's a proper fight:
+jabs, kicks, uppercuts, dropkicks and blocks, little HP bars over their heads, and *BAM! TOK! KLETS!*
+
+Every visit is a **match, best of three**: after a knockout the loser gets up seeing stars, they catch their
+breath, *RONDE 2!*, and the rounds each has won show as gold pips under his HP bar. Whoever takes the match
+gloats, Kees walks (or limps) off, and a minute or so later he's back for the rematch - left alone, the dude
+spends more than half his time at it. The dude wins a bit more often than Kees (it's his desktop), and the
+score is kept in his save game.
+
+- **You come first.** Wave your cursor at the dude, click him or pick him up and he drops the fight to deal
+  with you. Kees waits on the side with his arms folded and picks it back up once you leave the dude alone -
+  or gives up and goes home if you keep the dude busy too long. A cursor you just left lying somewhere doesn't
+  count: if the dude goes after a parked arrow out of boredom, Kees cuts in and the dude happily takes him on
+  instead.
+- **Films first.** If you're watching something and the dude hasn't sat down with his popcorn yet, that
+  comes before Kees.
+- **Take sides.** Click Kees to land one on him yourself.
+- **Temporary as ever:** a window one of them gets slammed into shakes and snaps back; nothing else is touched.
+- Tray > **Fight! Call Kees (rival)** brings him over now, **Rival visits: on/off** stops him coming by himself.
+  How often he comes, his patience and their HP are in the tuning table (`rival_*`).
 
 ## Your bare desktop (vandal.py, graffiti.py)
 

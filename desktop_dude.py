@@ -17,6 +17,7 @@ Push him far enough and it's total war: drones, a tank, airstrikes (see warfare.
   Ctrl+Alt+T        desktop terror right now (see terror.py; graffiti sticks until you click it)
   Ctrl+Alt+D        duel: HP bars, best of 3 (again to stop)
   Ctrl+Alt+A        random weapon: bat, golf club, herring, chainsaw, shotgun, sniper, dynamite, pie...
+Leave him alone for a while and Kees, his rival, turns up for a fight (see rival.py; you always come first).
 He never clicks, types, closes/minimizes windows or touches files, and he
 never moves the cursor while you hold a mouse button.
 """
@@ -57,6 +58,7 @@ from aquarium import Aquarium
 from arsenal import WEAPONS, Arsenal
 from cleanup import Cleanup
 from life import Life
+from rival import Rival
 from terror import TERROR_MENU, Terror
 from updater import Updater
 from vandal import Vandal
@@ -1079,10 +1081,11 @@ class Dude(QWidget):
         self.updater = Updater(real=real)
         self.aqua = None
         self.update_url = None
-        self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat, "pose_air": pose_air, "pose_spray": pose_spray}, real=real)
+        self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat, "pose_air": pose_air, "pose_spray": pose_spray, "pose_ragdoll": pose_ragdoll, "pose_taunt": pose_taunt, "pose_dizzy": pose_dizzy}, real=real)
         self.aqua = Aquarium(self, self.life.kit, real=real and IS_WIN)  # Cuttlefish Pet is a Windows app
         self.vandal = Vandal(self, self.life.kit, real=real)
         self.crew = Cleanup(self, self.life.kit)
+        self.rival = Rival(self, self.life.kit, real=real)
         self.fx: list[tuple] = []
         self.errors = 0
         self.tray = None
@@ -1123,6 +1126,8 @@ class Dude(QWidget):
                 self.vandal.release()
             if getattr(self, "crew", None) is not None:
                 self.crew.release()
+            if getattr(self, "rival", None) is not None:
+                self.rival.release()
             self.sync_visible()
         self.x, self.y = self.world.spawn
         self.vx = self.vy = 0.0
@@ -1237,6 +1242,7 @@ class Dude(QWidget):
         self.aqua.step(dt, cur, self.w32.buttons_down())
         self.vandal.step(dt, cur, self.w32.buttons_down())
         self.crew.step(dt, cur, self.w32.buttons_down())
+        self.rival.step(dt, cur, self.w32.buttons_down())
         self.cracks = [c for c in self.cracks if c.step(dt)]
         self.fx = [(x, y, a + dt, k) for x, y, a, k in self.fx if a + dt < 0.6]
         self.place()
@@ -1273,6 +1279,8 @@ class Dude(QWidget):
         dist = math.hypot(dx, cy - (self.y - 50))
         btn = self.w32.buttons_down()
 
+        if self.rival.think(dt, cur, btn):
+            return
         if self.vandal.think(dt, cur, btn):
             return
         if self.aqua.think(dt, cur, btn):
@@ -1723,6 +1731,7 @@ class Dude(QWidget):
         self.aqua.release()
         self.vandal.release()
         self.crew.release()
+        self.rival.release()
         self.shaker.restore_all()
         self.shove = None
         for w in self.rockets + self.booms:
@@ -1734,7 +1743,7 @@ class Dude(QWidget):
     # ---- visuals
     def make_pose(self):
         s, st = self.state, self.st
-        p = self.vandal.pose() or self.aqua.pose() or self.life.pose() or self.arsenal.pose()
+        p = self.rival.pose() or self.vandal.pose() or self.aqua.pose() or self.life.pose() or self.arsenal.pose()
         if p is not None:
             return p
         if s == HELD:
@@ -1803,6 +1812,7 @@ class Dude(QWidget):
         self.life.paint(qp, FX, FY - lift, self.pose, self.f)
         self.aqua.paint(qp, FX, FY - lift, self.pose, self.f)
         self.vandal.paint(qp, FX, FY - lift, self.pose, self.f)
+        self.rival.paint(qp, FX, FY - lift, self.pose, self.f)
         if self.state == SLASH:
             self.draw_slash(qp)
         if self.state == "spray":
@@ -2005,6 +2015,7 @@ class Dude(QWidget):
         self.aqua.set_visible(vis)
         self.vandal.set_visible(vis)
         self.crew.set_visible(vis)
+        self.rival.set_visible(vis)
 
     def toggle_pause(self):
         self.paused = not self.paused
@@ -2049,6 +2060,14 @@ class Dude(QWidget):
         self.terror.enabled = not self.terror.enabled
         if self.tray:
             self.tray.terror_action.setText("Terror mode: " + ("on" if self.terror.enabled else "off"))
+
+    def call_rival(self):
+        self.rival.request()
+
+    def toggle_rival(self):
+        self.rival.enabled = not self.rival.enabled
+        if self.tray:
+            self.tray.rival_action.setText("Rival visits: " + ("on" if self.rival.enabled else "off"))
 
     def toggle_sound(self):
         self.terror.sfx.muted = not self.terror.sfx.muted
@@ -2131,6 +2150,8 @@ def build_tray(dude: Dude):
         ("Duel! (Ctrl+Alt+D)", dude.life.toggle_duel),
         ("Summon mini-dudes", dude.life.spawn_minions),
         ("Call the graffiti crew", dude.crew.start),
+        ("Fight! Call Kees (rival)", dude.call_rival),
+        ("Rival visits: on", dude.toggle_rival),
         ("Clear graffiti", dude.clear_graffiti),
         ("Edit tuning...", dude.edit_tuning),
         ("Reload tuning", dude.reload_tuning),
@@ -2148,6 +2169,8 @@ def build_tray(dude: Dude):
             tray.terror_action = a
         elif text.startswith("Sound"):
             tray.sound_action = a
+        elif text.startswith("Rival visits"):
+            tray.rival_action = a
     sub = menu.addMenu("Terror test")
     for kind, label in TERROR_MENU:
         act = QAction(label, sub)
