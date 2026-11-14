@@ -143,6 +143,9 @@ def _make(seed):
     clock = [0.0]
     dude = dd.Dude(w32, clock=lambda: clock[0])
     dude.timer.stop()
+    # Kees turns up within seconds of the dude being left alone, which is the point of him, and would
+    # get in the way of every other test of what a bored dude does. He has his own tests (test_rival.py).
+    dude.rival.enabled = False
     return w32, clock, dude
 
 

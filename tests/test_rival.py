@@ -30,6 +30,7 @@ def _setup(seed, **tune):
     w32, clock, dude = _quiet(seed)
     dude.aqua.enabled = False
     dude.tune = dataclasses.replace(dude.tune, **tune) if tune else dude.tune
+    dude.rival.enabled = True  # off by default in the shared test helper
     dude.rival.cd = 0.0
     return w32, clock, dude
 
