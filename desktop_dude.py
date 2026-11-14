@@ -55,6 +55,7 @@ import tuning
 from appdir import DATA, VERSION
 from aquarium import Aquarium
 from arsenal import WEAPONS, Arsenal
+from cleanup import Cleanup
 from life import Life
 from terror import TERROR_MENU, Terror
 from updater import Updater
@@ -1081,6 +1082,7 @@ class Dude(QWidget):
         self.life = Life(self, {"Pose": Pose, "draw": draw_dude, "skeleton": skeleton, "pose_kick": pose_kick, "pose_crouch": pose_crouch, "pose_walk": pose_walk, "pose_stand": pose_stand, "pose_punch": pose_punch, "pose_eat": pose_eat, "pose_air": pose_air, "pose_spray": pose_spray}, real=real)
         self.aqua = Aquarium(self, self.life.kit, real=real and IS_WIN)  # Cuttlefish Pet is a Windows app
         self.vandal = Vandal(self, self.life.kit, real=real)
+        self.crew = Cleanup(self, self.life.kit)
         self.fx: list[tuple] = []
         self.errors = 0
         self.tray = None
@@ -1119,6 +1121,8 @@ class Dude(QWidget):
                 self.aqua.release()
             if getattr(self, "vandal", None) is not None:
                 self.vandal.release()
+            if getattr(self, "crew", None) is not None:
+                self.crew.release()
             self.sync_visible()
         self.x, self.y = self.world.spawn
         self.vx = self.vy = 0.0
@@ -1232,6 +1236,7 @@ class Dude(QWidget):
         self.life.step(dt, cur, self.w32.buttons_down())
         self.aqua.step(dt, cur, self.w32.buttons_down())
         self.vandal.step(dt, cur, self.w32.buttons_down())
+        self.crew.step(dt, cur, self.w32.buttons_down())
         self.cracks = [c for c in self.cracks if c.step(dt)]
         self.fx = [(x, y, a + dt, k) for x, y, a, k in self.fx if a + dt < 0.6]
         self.place()
@@ -1717,6 +1722,7 @@ class Dude(QWidget):
         self.life.release()
         self.aqua.release()
         self.vandal.release()
+        self.crew.release()
         self.shaker.restore_all()
         self.shove = None
         for w in self.rockets + self.booms:
@@ -1998,6 +2004,7 @@ class Dude(QWidget):
         self.life.set_visible(vis)
         self.aqua.set_visible(vis)
         self.vandal.set_visible(vis)
+        self.crew.set_visible(vis)
 
     def toggle_pause(self):
         self.paused = not self.paused
@@ -2123,6 +2130,7 @@ def build_tray(dude: Dude):
         ("Random weapon (Ctrl+Alt+A)", dude.weapon_now),
         ("Duel! (Ctrl+Alt+D)", dude.life.toggle_duel),
         ("Summon mini-dudes", dude.life.spawn_minions),
+        ("Call the graffiti crew", dude.crew.start),
         ("Clear graffiti", dude.clear_graffiti),
         ("Edit tuning...", dude.edit_tuning),
         ("Reload tuning", dude.reload_tuning),

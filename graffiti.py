@@ -347,12 +347,15 @@ def render(piece: Piece) -> QImage:
     return img
 
 
-def paint_cached(qp, w, h, piece: Piece, img: QImage | None, progress=1.0, alpha=1.0):
-    """Reveal a pre-rendered piece up to the spray edge: an image blit, about a millisecond."""
-    if img is None or progress <= 0:
+def paint_cached(qp, w, h, piece: Piece, img: QImage | None, progress=1.0, alpha=1.0, erase=0.0):
+    """Reveal a pre-rendered piece up to the spray edge: an image blit, about a millisecond.
+    erase 0..1: the graffiti crew has washed off everything left of that fraction of the width."""
+    if img is None or progress <= 0 or erase >= 1.0:
         return
     if alpha < 1.0:
         qp.setOpacity(max(0.0, alpha))
-    if progress < 1.0:
-        qp.setClipRect(QRectF(0, 0, max(0.0, w / 2 + piece.reveal_x(progress)), h))
+    left = w * max(0.0, erase)
+    right = w if progress >= 1.0 else max(0.0, w / 2 + piece.reveal_x(progress))
+    if left > 0 or right < w:
+        qp.setClipRect(QRectF(left, 0, max(0.0, right - left), h))
     qp.drawImage(0, 0, img)

@@ -694,7 +694,7 @@ class Graffiti(FxWindow):
         self.W, self.H = self.piece.size()
         super().__init__(self.W, self.H, clickable=True)
         self.place_at(x, y)
-        self.progress, self.fading, self.img = 0.0, None, None
+        self.progress, self.fading, self.img, self.erase = 0.0, None, None, 0.0
         self.show()
 
     def set_image(self, img):
@@ -724,7 +724,7 @@ class Graffiti(FxWindow):
     def paintEvent(self, _):
         if self.img is None and (self.auto or self.progress >= 1.0):
             self.img = render(self.piece)  # nobody pre-rendered it: do it now (once)
-        paint_cached(QPainter(self), self.W, self.H, self.piece, self.img, self.progress)
+        paint_cached(QPainter(self), self.W, self.H, self.piece, self.img, self.progress, erase=self.erase)
 
 
 class Bubble(FxWindow):

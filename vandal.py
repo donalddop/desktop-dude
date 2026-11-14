@@ -73,7 +73,7 @@ class WallPiece(WallWidget):
     def __init__(self, w32, cx, cy, piece: Piece, auto=True):
         w, h = piece.size()
         super().__init__(w32, cx, cy, w, h)
-        self.piece, self.auto, self.progress, self.img = piece, auto, 0.0, None
+        self.piece, self.auto, self.progress, self.img, self.erase = piece, auto, 0.0, None, 0.0
 
     def set_image(self, img):
         self.img = img
@@ -99,7 +99,7 @@ class WallPiece(WallWidget):
         if self.img is None and (self.auto or self.progress >= 1.0):
             self.img = render(self.piece)  # nobody pre-rendered it: do it now (once)
         fade = 1.0 - max(0.0, self.age - WALL_LIFE) / 3.0
-        paint_cached(QPainter(self), self.w_, self.h_, self.piece, self.img, self.progress, fade)
+        paint_cached(QPainter(self), self.w_, self.h_, self.piece, self.img, self.progress, fade, self.erase)
 
 
 class WallHole(WallWidget):

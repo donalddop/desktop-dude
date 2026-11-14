@@ -223,6 +223,12 @@ or quit him, and your desktop is back. Your real wallpaper file and icon layout 
   home. The real icon hides under a patch of your own wallpaper meanwhile. Swipe your cursor through the ball
   or click it to steal it from him.
 
+- **The graffiti crew:** can't get it off (pieces on your wallpaper sit behind your icons, so a click never
+  reaches them)? Tray > **Call the graffiti crew**: two or three council workers in hi-vis roll in on little
+  scissor lifts, drive to every piece, go up and blast it off with a pressure washer, left to right, and
+  plaster the holes. The dude is not amused (and sometimes tags again straight after). They also come by
+  themselves when it piles up. Tray > Clear graffiti still wipes everything at once.
+
 Tray > Desktop vandalism triggers each on demand. Fonts: Sedgwick Ave Display, Rubik Bubbles (OFL) and Permanent
 Marker (Apache 2.0) from Google Fonts, licenses in `assets/fonts`.
 
