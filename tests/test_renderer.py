@@ -21,9 +21,9 @@ def test_same_seed_same_piece(app):
     a, b = Piece(None, None, 1.2, seed=11), Piece(None, None, 1.2, seed=11)
     assert (a.style, a.text, a.angle, a.size(), a.drips) == (b.style, b.text, b.angle, b.size(), b.drips)
     assert a.spec == (None, None, 1.2, 11, False)
-    love = Piece("throwup", "LIEF", 1.0, seed=5, love=True)
-    again = Piece(*love.spec[:3], seed=love.spec[3], love=love.spec[4])
-    assert (again.pal, again.extras, again.text) == (love.pal, love.extras, love.text)
+    shout = Piece("throwup", "LIEF", 1.0, seed=5, shout=True)
+    again = Piece(*shout.spec[:3], seed=shout.spec[3], shout=shout.spec[4])
+    assert (again.pal, again.extras, again.text) == (shout.pal, shout.extras, shout.text)
 
 
 def test_helper_process_paints_it_off_the_main_thread(app):

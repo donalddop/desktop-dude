@@ -30,7 +30,7 @@ def _work(inq, outq):
             return
         jid, (style, text, scale, seed, *rest) = job
         try:
-            img = render(Piece(style, text, scale, seed=seed, love=bool(rest and rest[0])))
+            img = render(Piece(style, text, scale, seed=seed, shout=bool(rest and rest[0])))
             outq.put((jid, img.width(), img.height(), bytes(img.constBits())))
         except Exception as e:  # noqa: BLE001
             outq.put((jid, 0, 0, repr(e).encode()))

@@ -122,7 +122,8 @@ class Tuning:
 
     # ---- shout-outs (vandal.py): now and then he sprays a name you pick instead of his own stuff
     shoutout_words: tuple[str, ...] = ()  # names to spray, e.g. ["LIEF", "Liefje"]: short ones as big bubble letters
-    shoutout_share: float = 0.35  # share of his graffiti that is a shout-out, once there are names (0-1)
+    shoutout_share: float = 0.1  # share of his graffiti that is a shout-out, once there are names (0-1)
+    shoutout_announce: float = 0.0  # chance he says who it is for while spraying it (0: keeps it to himself)
 
     # ---- the rival (rival.py): Kees is the dude's usual sparring partner whenever the cursor leaves him be
     rival_first_delay_s: float = 15.0  # seconds after start before Kees can first turn up
