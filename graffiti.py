@@ -54,6 +54,13 @@ PALETTES = [
 ]
 TAG_COLOURS = [(15, 15, 15), (235, 35, 50), (40, 90, 255), (255, 255, 255), (120, 255, 70), (255, 150, 20),
                (255, 80, 200)]
+# Shout-outs (a name you gave him in the tuning block) come in love colours: rose, candy, valentine red.
+LOVE_PALETTES = [
+    ((255, 125, 175), (210, 30, 100), (60, 10, 40), (255, 175, 210)),
+    ((255, 110, 210), (140, 50, 230), (25, 20, 70), (255, 120, 255)),
+    ((250, 45, 75), (150, 0, 40), (20, 20, 20), (255, 205, 225)),
+]
+LOVE_TAG_COLOURS = [(235, 35, 80), (255, 80, 170), (255, 255, 255), (200, 60, 230)]
 
 
 def family(kind: str) -> str:
@@ -100,6 +107,16 @@ def _crown(qp, x, y, s, col, outline=True):
     qp.drawPolygon(poly)
 
 
+def _heart(qp, x, y, r, col):
+    p = QPainterPath()
+    p.moveTo(x, y + r * 0.95)
+    p.cubicTo(x - r * 1.7, y - r * 0.15, x - r * 0.75, y - r * 1.45, x, y - r * 0.45)
+    p.cubicTo(x + r * 0.75, y - r * 1.45, x + r * 1.7, y - r * 0.15, x, y + r * 0.95)
+    qp.setPen(QPen(QColor(10, 10, 10), max(1.5, r * 0.28), Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    qp.setBrush(col)
+    qp.drawPath(p)
+
+
 def _xxx(qp, x, y, s):
     """Amsterdam's three St. Andrew's crosses, black on a red bar."""
     qp.setPen(Qt.NoPen)
@@ -130,24 +147,27 @@ class Piece:
     """One graffiti piece. Coordinates: centred on (0, 0); size() is the box it needs."""
 
     def __init__(self, style: str | None = None, text: str | None = None, scale: float = 1.0, rng=None,
-                 seed: int | None = None):
+                 seed: int | None = None, love: bool = False):
         if rng is None:  # seeded: the graffiti helper process can rebuild exactly this piece
             seed = random.randrange(2**31) if seed is None else seed
             rng = random.Random(seed)
         self.seed = seed if rng is not None and seed is not None else None
-        self.spec = (style, text, scale, self.seed)
+        self.love = bool(love)  # a shout-out: love colours and hearts instead of stars
+        self.spec = (style, text, scale, self.seed, self.love)
         self.style = style or rng.choice(("tag", "throwup", "throwup", "piece"))
         self.scale = scale
         self.angle = rng.uniform(-9, 5)
-        self.pal = rng.choice(PALETTES)
+        self.pal = rng.choice(LOVE_PALETTES if self.love else PALETTES)
         self.sign = rng.choice(SIGNS)
         extras = ["crown", "stars", "xxx", "arrow", "halo"]
         rng.shuffle(extras)
         self.extras = set(extras[: rng.randint(1, 3)])
+        if self.love:
+            self.extras = (self.extras - {"stars", "xxx"}) | {"hearts"}
         if self.style == "tag":
             self.text = text or rng.choice(TAGS)
             kind = rng.choice(("hand", "hand", "marker"))
-            self.col = _c(rng.choice(TAG_COLOURS))
+            self.col = _c(rng.choice(LOVE_TAG_COLOURS if self.love else TAG_COLOURS))
             self.path = text_path(self.text, kind, int(58 * scale))
             self.path = QTransform().shear(-0.25, 0).map(self.path)  # fast hand leans forward
             self.drips = _drips(rng, self.path, rng.randint(1, 3), 28 * scale)
@@ -287,7 +307,7 @@ class Piece:
         qp.setBrush(grad)
         qp.drawPath(self.path)
         self._shine(qp)
-        self.extras.add("stars")
+        self.extras.add("hearts" if self.love else "stars")
         self._extras(qp)
         sig = text_path(self.sign, "hand", int(26 * s))
         br = sig.boundingRect()
@@ -316,6 +336,10 @@ class Piece:
         if "stars" in self.extras:
             for fx, fy, r in self.stars:
                 _star(qp, fx * (self.half_w + 20 * s), fy * (self.half_h + 18 * s), r, QColor(255, 255, 255, 235))
+        if "hearts" in self.extras:
+            for i, (fx, fy, r) in enumerate(self.stars):
+                col = QColor(255, 60, 110, 240) if i % 2 == 0 else QColor(255, 255, 255, 240)
+                _heart(qp, fx * (self.half_w + 22 * s), fy * (self.half_h + 20 * s), r * 1.25, col)
         if "crown" in self.extras:
             _crown(qp, -self.half_w + 18 * s, -self.half_h - 20 * s, s, QColor(255, 210, 40))
         if "xxx" in self.extras:

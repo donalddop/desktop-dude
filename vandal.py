@@ -36,6 +36,10 @@ LINES.update({
     "nicked": ["Hé! Mijn bal!", "Blijf van m'n bal af, sukkel"],
 })
 
+# Said while he sprays a shout-out; {naam} is the name from the tuning block, so no names live in the code.
+SHOUT_LINES = ["Deze is voor {naam}", "{naam}, deze is voor jou", "Voor {naam}, met liefde uit Mokum",
+               "Een muurtje voor {naam}", "Kijk {naam}, helemaal voor jou", "Mokum groet {naam}"]
+
 WALL_LIFE = 20 * 60.0
 OVERLAY_LOW = 0.72  # on top of your windows he stays above this fraction of the screen: the bottom is where you type  # graffiti on the wallpaper fades after 20 minutes
 HOLE_LIFE, PATCH_LIFE = 80.0, 25.0
@@ -437,6 +441,21 @@ class Vandal:
     def start_piece(self, piece: Piece | None = None) -> bool:
         return self.start_spray(piece)
 
+    def shoutout(self):
+        """Now and then a name you picked instead of his own stuff: (style, text, name), or None.
+
+        Short names (up to five letters, like a nickname) become big bubble letters or a piece; longer ones a
+        handstyle tag or a piece. Bubble letters and pieces are in capitals, a tag the way you wrote it."""
+        t = self.d.tune
+        words = [w for w in getattr(t, "shoutout_words", ()) if w.strip()]
+        if not words or _rng.random() >= min(1.0, t.shoutout_share):
+            return None
+        word = _rng.choice(words)
+        style = _rng.choice(("throwup", "throwup", "piece")) if len(word) <= 5 else _rng.choice(("tag", "piece"))
+        text = word if style == "tag" else word.upper()
+        name = word.capitalize() if word.isupper() or word.islower() else word
+        return style, text, name
+
     def start_spray(self, piece: Piece | None = None) -> bool:
         """He jumps up to the spot in a cloud of dust and sprays the piece on live, left to right, then drops.
         On bare wallpaper if there's any (behind your icons), else on top of the screen, high up."""
@@ -444,10 +463,13 @@ class Vandal:
         if self.job or d.state in ("held", "ragdoll", "tanking", "binned", "aqua", "climb"):
             return False
         spot, on_wall = None, False
+        shout = self.shoutout() if piece is None else None
+        text = shout[1] if shout else None
         if self.wall_ok():
-            style = _rng.choice(("throwup", "piece", "piece", "tag"))
+            style = shout[0] if shout else _rng.choice(("throwup", "piece", "piece", "tag"))
             scale = _rng.uniform(0.6, 1.8)
-            tries = [piece] if piece is not None else [Piece(style, scale=s) for s in (scale, scale * 0.7, 0.6)]
+            tries = [piece] if piece is not None else [Piece(style, text, scale=s, love=bool(shout))
+                                                       for s in (scale, scale * 0.7, 0.6)]
             for wp in tries:  # too big for the bare bit of wallpaper? try it smaller first
                 spot = self.spot_for(*wp.size())
                 if spot is not None:
@@ -456,7 +478,8 @@ class Vandal:
         if spot is None:
             if len(d.terror.graffiti) >= 15:
                 return False
-            piece = Piece(_rng.choice(("tag", "throwup", "throwup", "piece")), scale=_rng.uniform(0.5, 1.25))
+            style = shout[0] if shout else _rng.choice(("tag", "throwup", "throwup", "piece"))
+            piece = Piece(style, text, scale=_rng.uniform(0.5, 1.25), love=bool(shout))
             w, h = piece.size()
             s = d.world.screen_at(d.x)
             # any height, but out of the bottom strip where you type
@@ -474,6 +497,8 @@ class Vandal:
         d.vx = 0.0
         d.f = 1 if spot[0] >= d.x else -1
         d.set_state("vandal", 99.0)
+        if shout:
+            d.terror.say_text(_rng.choice(SHOUT_LINES).format(naam=shout[2]))
         return True
 
     def start_hole(self) -> bool:

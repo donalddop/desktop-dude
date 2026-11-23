@@ -120,6 +120,10 @@ class Tuning:
     aqua_reach_up_px: float = 700.0  # he goes for cuttlefish up to this far above his feet ...
     aqua_leap_speed: float = 1900.0  # ... and leaps at them with up to this upward speed (px/s)
 
+    # ---- shout-outs (vandal.py): now and then he sprays a name you pick instead of his own stuff
+    shoutout_words: tuple[str, ...] = ()  # names to spray, e.g. ["LIEF", "Liefje"]: short ones as big bubble letters
+    shoutout_share: float = 0.35  # share of his graffiti that is a shout-out, once there are names (0-1)
+
     # ---- the rival (rival.py): Kees is the dude's usual sparring partner whenever the cursor leaves him be
     rival_first_delay_s: float = 15.0  # seconds after start before Kees can first turn up
     rival_cooldown_s: tuple[float, float] = (25.0, 70.0)  # breather [min, max] between matches
@@ -182,6 +186,9 @@ def _number(v) -> bool:
     return isinstance(v, int | float) and not isinstance(v, bool) and v >= 0
 
 
+TEXT_LISTS = {"shoutout_words"}  # tuple fields that hold words rather than [min, max]
+
+
 def from_dict(raw: dict, log=lambda msg: None) -> Tuning:
     """Defaults with whatever valid overrides `raw` holds; anything odd is skipped and logged."""
     base = Tuning()
@@ -203,6 +210,12 @@ def from_dict(raw: dict, log=lambda msg: None) -> Tuning:
                 else:
                     log(f"tuning: {key}.{k} skipped")
             changes[key] = merged
+        elif key in TEXT_LISTS:
+            if isinstance(value, list | tuple) and all(isinstance(w, str) for w in value):
+                words = tuple(w.strip()[:20] for w in value if w.strip())[:12]
+                changes[key] = words
+            else:
+                log(f"tuning: {key} must be a list of words, skipped")
         elif isinstance(current, tuple):
             if isinstance(value, list | tuple) and len(value) == 2 and all(map(_number, value)):
                 lo, hi = sorted(float(v) for v in value)

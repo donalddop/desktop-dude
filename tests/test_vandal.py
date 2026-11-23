@@ -278,3 +278,59 @@ def test_release_keeps_the_wall_but_stops_the_game(app):
     dude.release_everything()
     assert not dude.vandal.job and dude.vandal.fx == []
     assert len(dude.vandal.wall) == 1
+
+
+# ---------- shout-outs: a name you picked, in love colours
+
+@pytest.mark.parametrize("style,text", [("throwup", "LIEF"), ("piece", "LIEFJE"), ("tag", "Liefje")])
+def test_a_shoutout_paints_in_love_colours(app, style, text):
+    from graffiti import LOVE_PALETTES, LOVE_TAG_COLOURS
+
+    p = Piece(style, text, scale=0.9, seed=4, love=True)
+    assert "hearts" in p.extras and "stars" not in p.extras
+    if style == "tag":
+        assert p.col.getRgb()[:3] in LOVE_TAG_COLOURS
+    else:
+        assert p.pal in LOVE_PALETTES
+    w, h = p.size()
+    img = QImage(w, h, QImage.Format_ARGB32)
+    img.fill(QColor(0, 0, 0, 0))
+    qp = QPainter(img)
+    p.paint(qp, w / 2, h / 2)
+    qp.end()
+    assert sum(img.pixelColor(x, y).alpha() > 0 for x in range(0, w, 7) for y in range(0, h, 7)) > 20
+
+
+def test_he_sprays_the_names_you_give_him(app):
+    import dataclasses
+
+    _w32, _clock, dude = _bare(70)
+    said = []
+    dude.terror.say_text = said.append
+    dude.tune = dataclasses.replace(dude.tune, shoutout_words=("LIEF", "Liefje"), shoutout_share=1.0)
+    texts = set()
+    for _ in range(12):
+        dude.set_state(dd.IDLE, 5.0)
+        dude.on_ground = True
+        assert dude.vandal.start_spray()
+        piece = dude.vandal.job["piece"]
+        assert piece.love
+        texts.add(piece.text)
+        if len(piece.text) <= 5:
+            assert piece.style in ("throwup", "piece") and piece.text == "LIEF"
+        dude.vandal.release()
+        dude.vandal.clear()
+    assert texts <= {"LIEF", "LIEFJE", "Liefje"} and len(texts) >= 2, texts
+    assert said and all(("Lief" in s) for s in said), said
+
+
+def test_no_names_no_shoutouts(app):
+    _w32, _clock, dude = _bare(71)
+    assert dude.tune.shoutout_words == ()
+    for _ in range(6):
+        dude.set_state(dd.IDLE, 5.0)
+        dude.on_ground = True
+        assert dude.vandal.start_spray()
+        assert not dude.vandal.job["piece"].love
+        dude.vandal.release()
+        dude.vandal.clear()

@@ -188,6 +188,13 @@ them in a `"tuning"` block in `dude_config.json`, e.g. `{"tuning": {"terror_ever
 | `aqua_reach_up_px` | 700 | he goes for cuttlefish up to this far above his feet |
 | `aqua_leap_speed` | 1900 | and leaps at them with up to this upward speed (px/s) (goes with `aqua_reach_up_px`) |
 
+**Shout-outs (vandal.py): now and then he sprays a name you pick instead of his own stuff**
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `shoutout_words` | [] | names to spray, e.g. ["LIEF", "Liefje"]: short ones as big bubble letters |
+| `shoutout_share` | 0.35 | share of his graffiti that is a shout-out, once there are names (0-1) |
+
 **The rival (rival.py): Kees is the dude's usual sparring partner whenever the cursor leaves him be**
 
 | Key | Default | What it does |
@@ -254,6 +261,11 @@ or quit him, and your desktop is back. Your real wallpaper file and icon layout 
   Words like MOKUM, 020, BOEF, SKEER, *los mokumos*, *grand theft fiets*. Fades after 20 minutes. No bare
   wallpaper in sight? Then he sprays on top of the screen, high up and out of the way of where you type
   (click a tag to wipe it).
+- **Shout-outs:** give him a name or two and he'll spray those too, for someone you want to give a shout-out:
+  short ones (a nickname) as big bubble letters or a piece, longer ones as a handstyle tag or a piece, all in
+  love colours with hearts instead of stars, and he tells you who it's for while he sprays. Put the names in
+  the tuning block of `dude_config.json` (Tray > Edit tuning..., then Reload tuning):
+  `"shoutout_words": ["LIEF", "Liefje"], "shoutout_share": 0.5`. The names only live in your own config.
 - **A hole in the wall:** he punches through your wallpaper: bricks behind it, cracks, and a Mokum rat peeking
   out. After a bit he tapes it up (*niemand merkt het*) and it fades.
 - **Icon football:** he kicks a copy of one of your icons around the bottom of the screen, then scores it back

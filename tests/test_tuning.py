@@ -243,3 +243,13 @@ def test_ensure_config_leaves_an_existing_block_and_a_broken_file_alone(tmp_path
     p.write_text(broken, encoding="utf-8")
     tuning.ensure_config(p)
     assert p.read_text(encoding="utf-8") == broken
+
+
+def test_shoutout_words_are_a_list_of_words():
+    log = []
+    t = from_dict({"shoutout_words": ["LIEF", "  Liefje ", "", "x" * 40], "shoutout_share": 0.5}, log.append)
+    assert t.shoutout_words == ("LIEF", "Liefje", "x" * 20)
+    assert t.shoutout_share == 0.5
+    assert from_dict({"shoutout_words": "LIEF"}, log.append).shoutout_words == ()
+    assert from_dict({"shoutout_words": [1, 2]}, log.append).shoutout_words == ()
+    assert any("list of words" in m for m in log)
