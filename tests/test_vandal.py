@@ -23,6 +23,7 @@ def app():
 
 def _bare(seed):
     """A dude on the floor of an empty desktop (no windows in the way)."""
+    vandal._rng.seed(seed)  # his own dice: unseeded, a test's outcome depended on the tests run before it
     w32, clock, dude = _quiet(seed)
     w32.wins = []
     dude.world.refresh()
@@ -273,7 +274,10 @@ def test_release_keeps_the_wall_but_stops_the_game(app):
     dude.terror.probe.icons = [("Prullenbak", (40, 40, 110, 116))]
     assert dude.vandal.start_piece()
     _spray_done(dude, clock)
-    _run(dude, clock, 240)  # he lands first
+    for _ in range(600):  # he lands first, however long that takes
+        if dude.on_ground and dude.plat_hwnd is None and not dude.vandal.job and dude.state in (dd.IDLE, "wander"):
+            break
+        _run(dude, clock, 1)
     assert dude.vandal.start("football")
     dude.release_everything()
     assert not dude.vandal.job and dude.vandal.fx == []
